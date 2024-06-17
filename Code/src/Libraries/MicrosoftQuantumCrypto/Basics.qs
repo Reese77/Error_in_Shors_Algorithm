@@ -22,7 +22,7 @@ namespace Microsoft.Quantum.Crypto.Basics {
 
 
     function IsTestable () : Bool {
-        return false;
+        return true;
     }
 
     function IsMinimizeDepthCostMetric () : Bool {
