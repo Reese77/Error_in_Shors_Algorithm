@@ -39,7 +39,8 @@ namespace Error_In_Shor_Algo {
             //else, find order mod N
             //maybe I should do the precomputation here
             let m = findOrderOfAMod_RecycledXRegister(guess, n);
-            let order = FindOrderFromQFT(guess, n, 0L, 2 * BitSizeL(n));
+            let almostOrder = FindOrderFromQFT(guess, n, m, 2 * BitSizeL(n), 4, 0L);
+            let order = RemoveEvenMultiples(guess, n, almostOrder);
 
             //if order is odd, continue to top of loop
             if order % 2L == 0L {
@@ -198,22 +199,48 @@ namespace Error_In_Shor_Algo {
     }
 
     
-    function FindOrderFromQFT(a : BigInt, n : BigInt, qftresult : BigInt, n1 : Int) : BigInt {
+    function FindOrderFromQFT(guess : BigInt, mod : BigInt, qftresult : BigInt, n1 : Int, doubles : Int, epsilon : BigInt) : BigInt {
         let Q = 2L^n1;
 
         let continuedFraction = ContinuedFractionExpansion(qftresult, Q);
         let convergents = Convergents(continuedFraction);
 
-        for (h, k) in convergents {
-            if k > 0L and k < n {
-                if (modularExponentiationL(a, k, n) == 1L) {
-                    return k;
+        //Message("Finished calculating convergents");
+
+        for (num, den) in convergents {
+            mutable copy = doubles;
+            mutable multiple = 1L;
+            //Message($"den: {den}");
+            if den > 0L and den < mod {
+                while copy > 0 {
+                    //Message($"copy: {copy}");
+                    //Message($"multiple: {multiple}");
+                    mutable eps = -epsilon;
+                    while eps <= epsilon {
+                        if (modularExponentiationL(guess, den*multiple + eps, mod) == 1L) {
+                            return den*multiple + eps;
+                        }
+                        set eps += 1L;
+                    }
+
+                    
+                    set multiple *= 2L;
+                    set copy /= 2;
+                    
                 }
             }
         }
+        return -1L;
 
-        //in findDivisor, we repeat the process if order is odd. If somehow this function doesn't return before this point, returning 1 will prevent it from getting through
-        return 1L;
+    }
+
+    function RemoveEvenMultiples(guess : BigInt, mod : BigInt, answer : BigInt) : BigInt {
+        mutable candidate = answer;
+
+        while candidate%2L == 0L and modularExponentiationL(guess, candidate / 2L, mod) == 1L {
+                set candidate /= 2L;
+        }
+        return candidate;
     }
 
     function ContinuedFractionExpansion(numerator : BigInt, denominator : BigInt) : BigInt[] {
