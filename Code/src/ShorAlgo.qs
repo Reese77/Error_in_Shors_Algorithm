@@ -215,12 +215,13 @@ namespace Error_In_Shor_Algo {
                 while copy > 0 {
                     //Message($"copy: {copy}");
                     //Message($"multiple: {multiple}");
-                    mutable eps = -epsilon;
-                    while eps <= epsilon {
-                        if (modularExponentiationL(guess, den*multiple + eps, mod) == 1L) {
-                            return den*multiple + eps;
+                    mutable power = MaxL(den*multiple - epsilon, 1L);
+                    
+                    while power <= den*multiple + epsilon {
+                        if (modularExponentiationL(guess, power, mod) == 1L) {
+                            return power;
                         }
-                        set eps += 1L;
+                        set power += 1L;
                     }
 
                     

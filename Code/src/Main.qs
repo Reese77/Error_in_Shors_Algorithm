@@ -16,17 +16,17 @@ namespace MyQuantumProgram {
 
     @EntryPoint()
     operation Main() : BigInt {
-        let p = 11;
-        let q = 23;
+        let p = 5;
+        let q = 7;
         let mod = IntAsBigInt(p * q);
 
-        let guess = 16L;
-        return findOrderOfAMod_RecycledXRegister(guess, mod);
-        //let result = findOrderOfAMod_RecycledXRegister(guess, mod);
+        let guess = 12L;
+        //return findOrderOfAMod_RecycledXRegister(guess, mod);
+        let result = findOrderOfAMod_RecycledXRegister(guess, mod);
 
         //Message($"Found result: {result}");
 
-        //let candidate = FindOrderFromQFT(guess, mod, result, 2 * BitSizeL(mod), 4);
-        //return RemoveEvenMultiples(guess, mod, candidate);
+        let candidate = FindOrderFromQFT(guess, mod, result, 2 * BitSizeL(mod), 4, 0L);
+        return RemoveEvenMultiples(guess, mod, candidate);
     }
 }
