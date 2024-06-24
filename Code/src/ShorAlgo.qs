@@ -95,8 +95,10 @@ namespace Error_In_Shor_Algo {
         //storing the measured values of each "bit" in the x register
         mutable measuredXReg = [Zero, size = n1];
 
-        //setting y register equal to 1
-        X(y[0]);
+        //setting y register equal to anything non-zero because it doesn't matter
+        X(y[4]);
+        X(y[2]);
+        X(y[5]);
 
         //interweaving multiplying the y register with qft
         for i in 0 .. n1 - 1 {
