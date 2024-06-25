@@ -42,6 +42,9 @@ namespace MyQuantumProgram {
         //Message($"Found result: {result}");
 
         let candidate = FindOrderFromQFT(guess, mod, result, 2 * BitSizeL(mod), 4, 0L);
+
+        //return (result, candidate);
+
         //return RemoveEvenMultiples(guess, mod, candidate);
     }
 }
