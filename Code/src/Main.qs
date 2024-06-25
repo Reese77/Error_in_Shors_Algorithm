@@ -12,21 +12,39 @@ namespace MyQuantumProgram {
     open Microsoft.Quantum.Canon;
     open Error_In_Shor_Algo;
     open Tools;
-
+    //@EntryPoint()
+    operation other() : Unit {
+        
+        Message($"{FindOrderFromQFT(12L, 253L, 26513L, 16, 4, 0L)}");
+    }
 
     @EntryPoint()
-    operation Main() : BigInt {
-        let p = 11;
-        let q = 23;
+    operation Main() : (BigInt, BigInt)[] {
+        let p = 23;
+        let q = 11;
+        let len = 10;
         let mod = IntAsBigInt(p * q);
 
-        let guess = 16L;
-        return findOrderOfAMod_RecycledXRegister(guess, mod);
-        //let result = findOrderOfAMod_RecycledXRegister(guess, mod);
+        mutable qftresults = [0L, size = len];
+        mutable orderresults = [0L, size = len];
+        let guess = 20L;
+
+        for i in 0 .. len-1 {
+            Message($"{i}");
+            set qftresults w/= i <-findOrderOfAMod_RecycledXRegister(guess, mod);
+            set orderresults w/= i <- RemoveEvenMultiples(guess, mod, FindOrderFromQFT(guess, mod, qftresults[i], 2 * BitSizeL(mod), 4, 0L));
+        }
+        return Zipped(qftresults, orderresults);
+        
+        //return findOrderOfAMod_RecycledXRegister(guess, mod);
+        let result = findOrderOfAMod_RecycledXRegister(guess, mod);
 
         //Message($"Found result: {result}");
 
-        //let candidate = FindOrderFromQFT(guess, mod, result, 2 * BitSizeL(mod), 4);
+        let candidate = FindOrderFromQFT(guess, mod, result, 2 * BitSizeL(mod), 4, 0L);
+
+        //return (result, candidate);
+
         //return RemoveEvenMultiples(guess, mod, candidate);
     }
 }

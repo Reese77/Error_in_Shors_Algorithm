@@ -1,6 +1,8 @@
 namespace Error_In_Shor_Algo {
 
+    open Microsoft.Quantum.Crypto.Arithmetic;
     open Microsoft.Quantum.Math;
+    open Microsoft.Quantum.Arrays;
     open Microsoft.Quantum.Convert;
     open Microsoft.Quantum.Crypto.Basics;
     open Microsoft.Quantum.Crypto.ModularArithmetic;
@@ -84,7 +86,14 @@ namespace Error_In_Shor_Algo {
 
         //since we are intermingling the multiplication and QFT inverse, we can reuse the x qubit for each bit
         use x = Qubit();
+        mutable x_error = QubitError(x, 0, 0);
         use y = Qubit[n2];
+        mutable y_arr = [QubitError(x, 0, 0), size = n2];
+        for i in 0 .. n2-1 {
+            set y_arr w/= i <- QubitError(y[i], 0, 0);
+        }
+        mutable y_error = LittleEndianError(y_arr);
+
 
         //doing the precomputation for a^(2^i)
         //I guess this could be passed as a parameter since n is fixed 
@@ -95,32 +104,37 @@ namespace Error_In_Shor_Algo {
         //storing the measured values of each "bit" in the x register
         mutable measuredXReg = [Zero, size = n1];
 
-        //setting y register equal to 1
-        X(y[0]);
+        //setting y register equal to anything non-zero because it doesn't matter
+        X_Gate_Error(y_error![0]);
+        X_Gate_Error(y_error![2]);
+        X_Gate_Error(y_error![5]);
 
         //interweaving multiplying the y register with qft
         for i in 0 .. n1 - 1 {
-            H(x);
+            H_Gate_Error(x_error);
 
-            Controlled ModularMulByConstantConstantModulusInPlace([x],(mod, precomputed[i], LittleEndian(y)));
+            let (x_qubit, x_x_prob, x_z_prob) = x_error!;
+
+            Controlled ModularMulByConstantConstantModulusInPlace([x_qubit],(mod, precomputed[i], y_error));
 
             //do any necessary rotations
             mutable iterator = 0;
             while iterator < i {
                 if measuredXReg[iterator] == One {
-                    R1Frac(1, i - iterator, x);
+                    
+                    R1Frac_Gate_Error(1, i - iterator, x_error);
                 }
 
                 set iterator += 1;
             }
 
-            H(x);
+            H_Gate_Error(x_error);
 
-            set measuredXReg w/= i <- M(x);
+            set measuredXReg w/= i <- M_Gate_Error(x_error);
 
-            Reset(x);
+            Reset_Error(x_error);
         }
-        ResetAll(y);
+        ResetAll_Error(y_error);
 
         return ResultBigEndiantoBigInt(measuredXReg);
 
@@ -215,12 +229,13 @@ namespace Error_In_Shor_Algo {
                 while copy > 0 {
                     //Message($"copy: {copy}");
                     //Message($"multiple: {multiple}");
-                    mutable eps = -epsilon;
-                    while eps <= epsilon {
-                        if (modularExponentiationL(guess, den*multiple + eps, mod) == 1L) {
-                            return den*multiple + eps;
+                    mutable power = MaxL(den*multiple - epsilon, 1L);
+                    
+                    while power <= den*multiple + epsilon {
+                        if (modularExponentiationL(guess, power, mod) == 1L) {
+                            return power;
                         }
-                        set eps += 1L;
+                        set power += 1L;
                     }
 
                     
@@ -263,27 +278,27 @@ namespace Error_In_Shor_Algo {
 
 
     function Convergents(continuedFraction : BigInt[]) : (BigInt, BigInt)[] {
-    mutable convergentsList = [];
-    mutable prevNumerator = 1L;
-    mutable prevPrevNumerator = 0L;
-    mutable prevDenominator = 0L;
-    mutable prevPrevDenominator = 1L;
+        mutable convergentsList = [];
+        mutable prevNumerator = 1L;
+        mutable prevPrevNumerator = 0L;
+        mutable prevDenominator = 0L;
+        mutable prevPrevDenominator = 1L;
 
-    for term in continuedFraction {
-        let currentNumerator = term * prevNumerator + prevPrevNumerator;
-        let currentDenominator = term * prevDenominator + prevPrevDenominator;
-        set convergentsList += [(currentNumerator, currentDenominator)];
-        //Message($"{currentNumerator}/{currentDenominator}");
+        for term in continuedFraction {
+            let currentNumerator = term * prevNumerator + prevPrevNumerator;
+            let currentDenominator = term * prevDenominator + prevPrevDenominator;
+            set convergentsList += [(currentNumerator, currentDenominator)];
+            //Message($"{currentNumerator}/{currentDenominator}");
 
-        // Update previous values for the next iteration
-        set prevPrevNumerator = prevNumerator;
-        set prevNumerator = currentNumerator;
-        set prevPrevDenominator = prevDenominator;
-        set prevDenominator = currentDenominator;
+            // Update previous values for the next iteration
+            set prevPrevNumerator = prevNumerator;
+            set prevNumerator = currentNumerator;
+            set prevPrevDenominator = prevDenominator;
+            set prevDenominator = currentDenominator;
+        }
+
+        return convergentsList;
     }
-
-    return convergentsList;
-}
 
     
 }
