@@ -134,7 +134,7 @@ namespace Error_In_Shor_Algo {
 
             Reset_Error(x_error);
         }
-        ResetAll_Error(y_error);
+        ResetAll_Error(y_error!);
 
         return ResultBigEndiantoBigInt(measuredXReg);
 

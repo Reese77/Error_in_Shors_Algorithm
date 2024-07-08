@@ -4,7 +4,7 @@ namespace Microsoft.Quantum.Crypto.Error.ModularArithmetic {
     open Microsoft.Quantum.Math;
     open Microsoft.Quantum.Diagnostics;
     open Microsoft.Quantum.Canon;
-    open Microsoft.Quantum.Crypto.Basics;
+    //open Microsoft.Quantum.Crypto.Basics;
     open Microsoft.Quantum.Crypto.Error.Arithmetic;
     open Microsoft.Quantum.Crypto.Error.Basics;
 
@@ -17,12 +17,12 @@ namespace Microsoft.Quantum.Crypto.Error.ModularArithmetic {
                 $"Cannot multiply by {constant} in-place modulo {modulus} because they are not co-prime"
             );
             let constantinv = InverseModL(constant, modulus);
-            use ys = Qubit[Length(xs!)] {
-                let ysLE = LittleEndian_Error(ys);
-                (Controlled SwapLE_Error)(controls, (xs, ysLE));
-                (Controlled ModularMulByConstantConstantModulus_Error)(controls, (modulus, constant, ysLE, xs));
-                (Adjoint Controlled ModularMulByConstantConstantModulus_Error)(controls, (modulus, constantinv, xs, ysLE));
-            }
+            mutable ys = createAncillaErrorArray(Length(xs!), [0, 0]);
+            let ysLE = LittleEndian_Error(ys);
+            (Controlled SwapLE_Error)(controls, (xs, ysLE));
+            (Controlled ModularMulByConstantConstantModulus_Error)(controls, (modulus, constant, ysLE, xs));
+            (Adjoint Controlled ModularMulByConstantConstantModulus_Error)(controls, (modulus, constantinv, xs, ysLE));
+            ResetAll_Error(ys);
         }
         controlled adjoint auto;
     }
@@ -59,13 +59,16 @@ namespace Microsoft.Quantum.Crypto.Error.ModularArithmetic {
                 nQubits == Length(ys!), 
                 "Input register xs and ys must have the same number of qubits." );
 
-            use carry = Qubit[1] {
-                (Controlled AddInteger_Error) (controls, (xs, ys, carry[0])); 
-                (Adjoint AddConstant_Error)(modulus, LittleEndian_Error(ys! + carry));
-                (Controlled AddConstant_Error) (carry, (modulus, ys));
-                (Controlled GreaterThanWrapper_Error) (controls, (xs, ys, carry[0]));
-                X(carry[0]);
-            }
+            mutable carry = createAncillaError([0, 0]);
+           
+            (Controlled AddInteger_Error) (controls, (xs, ys, carry)); 
+            (Adjoint AddConstant_Error)(modulus, LittleEndian_Error(ys! + [carry]));
+            (Controlled AddConstant_Error) ([convertQubitErrorToQubit(carry)], (modulus, ys));
+            (Controlled GreaterThanWrapper_Error) (controls, (xs, ys, carry));
+            X_Gate_Error(carry);
+
+            Reset_Error(carry)
+            
         }
         controlled adjoint auto;
     }
@@ -82,16 +85,18 @@ namespace Microsoft.Quantum.Crypto.Error.ModularArithmetic {
                 modulus % 2L == 1L, 
                 "ModularDbl requires modulus to be odd." );
 
+            //TODO last bit causes adjoint error everywhere
+            mutable ancilla = createAncillaError([0, 0]);
             use  ancillas = Qubit[1]  {
                 let carry = ancillas[0];
                 let xxs = LittleEndian_Error( xs! + [carry] );
 
                 (Controlled CyclicRotateRegister_Error) (controls, xxs);
-                ApplyToEachWrapperCA(X, xxs!);
+                ApplyToEachWrapperCA(X_Gate_Error, xxs!);
                 AddConstant_Error(modulus, xxs);
-                ApplyToEachWrapperCA(X, xxs!);
+                ApplyToEachWrapperCA(X_Gate_Error, xxs!);
                 (Controlled AddConstant_Error) ([carry], (modulus, xs));
-                (Controlled CNOT) (controls, (xs![0], carry));
+                (Controlled CNOT_Gate_Error) (controls, (xs![0], carry));
                 X(carry);
             }
         }
