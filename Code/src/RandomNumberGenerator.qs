@@ -27,6 +27,25 @@ namespace Tools {
         return number;
     }
 
+    operation GenerateRandomNumberInRangeI_Unit(max : Int) : Unit {
+        let n = LogarithmI(2, max);
+
+        mutable number = 0;
+        for i in 0 .. n - 1{
+            if GenerateRandomBit() == One {
+                set number += ExponentI(2, i);
+                
+            }
+        }
+        if number > max {
+            //return GenerateRandomNumberInRangeI(max);
+        }
+
+        //return number;
+    }
+
+
+
     /// # summary
     /// generates a random number between 0 and max
     ///

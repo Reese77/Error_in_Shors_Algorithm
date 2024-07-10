@@ -4,8 +4,8 @@ namespace Error_In_Shor_Algo {
     open Microsoft.Quantum.Math;
     open Microsoft.Quantum.Arrays;
     open Microsoft.Quantum.Convert;
-    open Microsoft.Quantum.Crypto.Basics;
-    open Microsoft.Quantum.Crypto.ModularArithmetic;
+    open Microsoft.Quantum.Crypto.Error.Basics;
+    open Microsoft.Quantum.Crypto.Error.ModularArithmetic;
     open Tools;
 
 
@@ -86,13 +86,13 @@ namespace Error_In_Shor_Algo {
 
         //since we are intermingling the multiplication and QFT inverse, we can reuse the x qubit for each bit
         use x = Qubit();
-        mutable x_error = QubitError(x, 0, 0);
+        mutable x_error = Qubit_Error(x, [0]);
         use y = Qubit[n2];
-        mutable y_arr = [QubitError(x, 0, 0), size = n2];
+        mutable y_arr = [Qubit_Error(x, [0]), size = n2];
         for i in 0 .. n2-1 {
-            set y_arr w/= i <- QubitError(y[i], 0, 0);
+            set y_arr w/= i <- Qubit_Error(y[i], [0]);
         }
-        mutable y_error = LittleEndianError(y_arr);
+        mutable y_error = LittleEndian_Error(y_arr);
 
 
         //doing the precomputation for a^(2^i)
@@ -113,9 +113,9 @@ namespace Error_In_Shor_Algo {
         for i in 0 .. n1 - 1 {
             H_Gate_Error(x_error);
 
-            let (x_qubit, x_x_prob, x_z_prob) = x_error!;
+            let (x_qubit, x_prob) = x_error!;
 
-            Controlled ModularMulByConstantConstantModulusInPlace([x_qubit],(mod, precomputed[i], y_error));
+            Controlled ModularMulByConstantConstantModulusInPlace_Error([x_qubit],(mod, precomputed[i], y_error));
 
             //do any necessary rotations
             mutable iterator = 0;
@@ -134,7 +134,7 @@ namespace Error_In_Shor_Algo {
 
             Reset_Error(x_error);
         }
-        ResetAll_Error(y_error);
+        ResetAll_Error(y_error!);
 
         return ResultBigEndiantoBigInt(measuredXReg);
 
@@ -170,8 +170,23 @@ namespace Error_In_Shor_Algo {
         //this is an array for a^(2^i) so allow us to split the exponentiation into multiplication
         mutable precomputed = [0L, size = n1];
 
+        use z = Qubit();
+
         use x = Qubit[n1];
+        mutable x_arr = [Qubit_Error(z, [0]), size = n1];
+        for i in 0 .. n1-1 {
+            set x_arr w/= i <- Qubit_Error(x[i], [0]);
+        }
+        mutable x_error = LittleEndian_Error(x_arr);
+
+
         use y = Qubit[n2];
+        mutable y_arr = [Qubit_Error(z, [0]), size = n2];
+        for i in 0 .. n2-1 {
+            set y_arr w/= i <- Qubit_Error(y[i], [0]);
+        }
+        mutable y_error = LittleEndian_Error(y_arr);
+
 
 
         //doing the precomputation for a^(2^i)
@@ -182,15 +197,17 @@ namespace Error_In_Shor_Algo {
         
         //setting x register to be a unformly random superposition of all numbers 0 to N^2
         for i in 0 .. n1-1 {
-            H(x[i]);
+            H_Gate_Error(x_arr[i]);
         }
 
         //setting y register equal to 1
-        X(y[0]);
+        X_Gate_Error(y_arr[0]);
 
         //incrementally multiplying y by a^(2^i) mod N, controlled by whether x[i] is 0 or 1
         for i in 0 .. n1-1 {
-            Controlled ModularMulByConstantConstantModulusInPlace([x[i]],(mod, precomputed[i], LittleEndian(y)));
+            let (x_qubit, x_prob) = x_error![i]!;
+
+            Controlled ModularMulByConstantConstantModulusInPlace_Error([x_qubit],(mod, precomputed[i], y_error));
         }
 
         let yreg = QubitLittleEndianToBigInt(y);
