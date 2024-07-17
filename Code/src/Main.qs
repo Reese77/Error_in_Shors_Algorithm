@@ -12,22 +12,18 @@ namespace MyQuantumProgram {
     open Microsoft.Quantum.Canon;
     open Error_In_Shor_Algo;
     open Tools;
-    //@EntryPoint()
-    operation other() : Unit {
-        
-        Message($"{FindOrderFromQFT(12L, 253L, 26513L, 16, 4, 0L)}");
-    }
 
-    @EntryPoint()
+
+    //@EntryPoint()
     operation Main() : (BigInt, BigInt)[] {
-        let p = 23;
-        let q = 11;
+        let p = 5;
+        let q = 7;
         let len = 10;
         let mod = IntAsBigInt(p * q);
 
         mutable qftresults = [0L, size = len];
         mutable orderresults = [0L, size = len];
-        let guess = 20L;
+        let guess = 12L;
 
         for i in 0 .. len-1 {
             Message($"{i}");

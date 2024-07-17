@@ -69,11 +69,15 @@ namespace Microsoft.Quantum.Crypto.Error.ModularArithmetic {
 
             use carry = Qubit() {
                 mutable ancilla = wrapAncillaError(carry, get_Ancilla_Prob());
+                Reset_Error(ancilla);
+
                 (Controlled AddInteger_Error) (controls, (xs, ys, ancilla)); 
                 (Adjoint AddConstant_Error)(modulus, LittleEndian_Error(ys! + [ancilla]));
                 (Controlled AddConstant_Error) ([carry], (modulus, ys));
                 (Controlled GreaterThanWrapper_Error) (controls, (xs, ys, ancilla));
                 X_Gate_Error(ancilla);
+
+                Reset_Error(ancilla);
             }
             
         }
@@ -121,6 +125,7 @@ namespace Microsoft.Quantum.Crypto.Error.ModularArithmetic {
             //TODO last bit causes adjoint error everywhere
             use  carry = Qubit()  {
                 mutable ancilla = wrapAncillaError(carry, get_Ancilla_Prob());
+                Reset_Error(ancilla);
 
                 let xxs = LittleEndian_Error( xs! + [ancilla] );
 
@@ -131,6 +136,8 @@ namespace Microsoft.Quantum.Crypto.Error.ModularArithmetic {
                 (Controlled AddConstant_Error) ([carry], (modulus, xs));
                 (Controlled CNOT_Gate_Error) (controls, (xs![0], ancilla));
                 X_Gate_Error(ancilla);
+
+                Reset_Error(ancilla);
             }
             
         }
@@ -214,10 +221,14 @@ namespace Microsoft.Quantum.Crypto.Error.ModularArithmetic {
             let constantinv = InverseModL(constant, modulus);
             use temp = Qubit[Length(xs!)] {
                 mutable ys = wrapAncillaErrorArray(temp, get_Ancilla_Prob());
+                ResetAll_Error(ys);
+
                 let ysLE = LittleEndian_Error(ys);
                 (Controlled SwapLE_Error)(controls, (xs, ysLE));
                 (Controlled ModularMulByConstantConstantModulus_Error)(controls, (modulus, constant, ysLE, xs));
                 (Adjoint Controlled ModularMulByConstantConstantModulus_Error)(controls, (modulus, constantinv, xs, ysLE));
+
+                ResetAll_Error(ys);
             }
         }
         controlled adjoint auto;

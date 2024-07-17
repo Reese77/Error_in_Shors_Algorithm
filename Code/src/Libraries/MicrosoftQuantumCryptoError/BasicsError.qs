@@ -6,6 +6,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
     open Microsoft.Quantum.Math;
     open Microsoft.Quantum.Diagnostics;
     open Microsoft.Quantum.Random;
+    open QIR.Intrinsic;
 
     ///IMPORTANT all comments starting with 3 slashes were copied over from original and may need to be edited
 
@@ -26,6 +27,10 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
     }
 
     function get_Ancilla_Prob() : Int[] {
+        return [0, 0];
+    }
+
+    function get_Ctrl_Prob() : Int[] {
         return [0, 0];
     }
 
@@ -80,19 +85,35 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
 
     }
 
+    operation causeError(q: Qubit, prob_error: Int[]) : Unit is Adj{
+        body(...){
+            _causeError(q,prob_error);
+        }
+        controlled (controls, ...) {
+            for i in controls {
+                _causeError(i, get_Ctrl_Prob());
+            }
+
+        }
+        adjoint(...){
+        }
+    }
+
     //operation to cause errors before ErrorWrapped gates
     //prob_error is currently of length 2 for X and Z errors
     //if you want to cause different types of errors, add more if statements after and
     //change the get_(insert_type)_Prob() functions to give an Int[] of the appropriate length
-    operation causeError(q : Qubit, prob_error : Int[]) : Unit is Adj + Ctl{
+    operation _causeError(q : Qubit, prob_error : Int[]) : Unit{
         mutable random_num = DrawRandomInt(0, 1000000);
 
         if (random_num < prob_error[0]) {
+            Message("X error");
             X(q);
         }
 
-        set random_num = GenerateRandomNumberInRangeI(1000000);
+        set random_num = DrawRandomInt(0, 1000000);
         if (random_num < prob_error[1]) {
+            Message("Z error");
             Z(q);
         }
     }
@@ -190,14 +211,38 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
     }
     
     operation Reset_Error(qubit : Qubit_Error) : Unit {
-        let (q, e) = qubit!;
-        Reset(q);
+        body(...) {
+            let (q, e) = qubit!;
+            Reset(q);
+        }
+        controlled (controls, ...) {
+            Reset_Error(qubit);
+        }
+        adjoint (...) {
+            Reset_Error(qubit);
+        }
+        controlled adjoint (...) {
+            Reset_Error(qubit);
+        }
+        
     }
 
-    operation ResetAll_Error(le : Qubit_Error[]) : Unit {
-        for q in le {
-            Reset_Error(q);
+    operation ResetAll_Error(le : Qubit_Error[]) : Unit is Adj + Ctl{
+        body (...){
+            for q in le {
+                Reset_Error(q);
+            }
         }
+        controlled (controls, ...){
+            ResetAll_Error(le);
+        }
+        adjoint (...) {
+            ResetAll_Error(le);
+        }
+        controlled adjoint (controls, ...){
+            ResetAll_Error(le);
+        }
+        
     }
 
     operation SWAP_Gate_Error(q1 : Qubit_Error, q2 : Qubit_Error) : Unit is Adj + Ctl {
@@ -290,12 +335,16 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
     operation ccnot_T_depth_1_Error (control1 : Qubit_Error, control2 : Qubit_Error, target : Qubit_Error) : Unit is Adj + Ctl {
         use temp = Qubit[4] {
             mutable auxillaryRegister = wrapAncillaErrorArray(temp, get_Ancilla_Prob());
+            ResetAll_Error(auxillaryRegister);
+
             // apply UVU† where U is outer circuit and V is inner circuit
             within{
                 TDepthOneCCNOTOuterCircuit_Error(auxillaryRegister + [target, control1, control2]);
             } apply {
                 TDepthOneCCNOTInnerCircuit_Error(auxillaryRegister + [target, control1, control2]);
             }
+
+            ResetAll_Error(auxillaryRegister);
         }
     }
 
@@ -378,7 +427,129 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         }
         controlled adjoint auto;
     }
-    //EqualLookup not copied over
+    /// # Summary
+    /// Sequential QRAM look-up, where a qubit register storing an 
+    /// address controls which element of a classical array is written 
+    /// to a quantum registers
+    ///
+    /// # Description
+    /// Sequentially iterates through all addresses, compares the address to 
+    /// the address register, and if they are equal, it writes the value from the 
+    /// classical array to a quantum register. The type of the classical array,
+    /// and the action within the classical array are left unspecified. The quantum
+    /// register is implicit in the `QuantumWrite` operation.
+    ///
+    /// Bits in the table beyond the range of address are ignored.
+    /// It is assumed that the address will never store a value beyond the end of the table.
+    /// Invalid addresses cause undefined behavior.
+    ///
+    /// # Input
+    /// ## table
+    /// The classical table whose values will be indexed and written into the target register.
+    /// ## QuantumWrite
+    /// A controllable operation which will write a specific value to some quantum register. 
+    /// This could be an in-place XOR, for example.
+    /// ## address
+    /// Determines which integer from the table will be xored into the target.
+    /// 
+    /// # References
+    /// Much of this code is directly adapted from the following reference, with slight
+    /// modifications to fit with the rest of the Microsoft.Quantum.Crypto library:
+    /// Craig Gidney. 2019. "Windowed Quantum Arithmetic", https://arxiv.org/abs/1905.07682
+    operation EqualLookup_Error<'T> (table: 'T[], QuantumWrite : (('T) => Unit is Ctl + Adj), address: LittleEndian_Error) : Unit {
+        body (...) {
+            Controlled EqualLookup_Error([], (table, QuantumWrite, address));
+        }
+        controlled (cs, ...) {
+            if (Length(table) == 0) {
+                fail "Can't lookup values in an empty table.";
+            }
+            // Compress controls: we only want a single control at one time
+            if (Length(cs) > 1){
+                use temp = Qubit() {
+                    mutable controlQubit = wrapAncillaError(temp, get_Ancilla_Prob());
+                    Reset_Error(controlQubit);
+
+                    CheckIfAllOnes_Error(wrapAncillaErrorArray(cs, get_Prob()), controlQubit);
+                    (Controlled EqualLookup_Error)([temp], (table, QuantumWrite, address));
+                    (Adjoint CheckIfAllOnes_Error)(wrapAncillaErrorArray(cs, get_Prob()), controlQubit);
+
+                    Reset_Error(controlQubit);
+                }
+            } else {
+
+                // Drop high bits that would place us beyond the range of the table.
+                let maxAddressLen = BitSizeI(Length(table));
+                if (maxAddressLen < Length(address!)) {
+                    let kept = LittleEndian_Error(address![0..maxAddressLen - 1]);
+                    (Controlled EqualLookup_Error)(cs, (table, QuantumWrite, kept));
+                } else {
+
+                    // Drop inaccessible parts of table.
+                    let maxTableLen = 1 <<< Length(address!);
+                    if (maxTableLen < Length(table)) {
+                        let kept = table[0..maxTableLen-1];
+                        (Controlled EqualLookup_Error)(cs, (kept, QuantumWrite, address));
+                    } elif (Length(table) == 1) {
+
+                        // Base case: singleton table.
+                        ApplyToEachWrapperCA(X_Gate_Error, address!);
+                        (Controlled QuantumWrite)(cs + convertQubitErrorArrayToQubitArray(address!), (table[0]));
+                        ApplyToEachWrapperCA(Adjoint X_Gate_Error, address!);
+                    } else {
+
+                        // Recursive case: divide and conquer.
+                        let highBit = address![Length(address!) - 1];
+                        let restAddress = LittleEndian_Error(address![0..Length(address!) - 2]);
+                        let h = 1 <<< (Length(address!) - 1);
+                        let lowTable = table[0..h-1];
+                        let highTable = table[h..Length(table)-1];
+                        use temp = Qubit() {
+                            mutable q = wrapAncillaError(temp, get_Ancilla_Prob());
+                            Reset_Error(q);
+
+                            // Store 'all(controls) and not highBit' in q.
+                            X_Gate_Error(highBit);
+                            if (Length(cs) > 0){
+                                 AndWrapper_Error(convertQubitToQubitError(cs[0], get_Prob()), highBit, q);
+                            } else {
+                                CNOT_Gate_Error(highBit, q);
+                            }
+                            X_Gate_Error(highBit);
+
+                            // Do lookup for half of table where highBit is 0.
+                            (Controlled EqualLookup_Error)([temp], (lowTable, QuantumWrite, restAddress));
+
+                            // Flip q to storing 'all(controls) and highBit'.
+                            if (Length(cs) > 0){
+                                CNOT_Gate_Error(convertQubitToQubitError(cs[0], get_Prob()), q);
+                            } else {
+                                X_Gate_Error(q);
+                            }
+
+                            // Do lookup for half of table where highBit is 1.
+                            (Controlled EqualLookup_Error)([temp], (highTable, QuantumWrite, restAddress));
+
+                            // Eager uncompute 'q = all(controls) and highBit'.
+                            if (Length(cs) > 0){
+                                 (Adjoint AndWrapper_Error)(convertQubitToQubitError(cs[0], get_Prob()), highBit, q);
+                            } else {
+                                CNOT_Gate_Error(highBit, q);
+                            }
+
+                            Reset_Error(q);
+                        }
+                    }
+                }
+            }
+        }
+        adjoint (...) {
+            (Controlled EqualLookup_Error)([], (table, (Adjoint QuantumWrite), address));
+        }
+        controlled adjoint (controls, ...){
+            (Controlled EqualLookup_Error)(controls, (table, (Adjoint QuantumWrite), address));
+        }
+    }
 
     /// # Summary
     /// Acts like a CCNOTWrapper, but with one input classical.
@@ -494,6 +665,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
 
             use temp = Qubit[nQubits] {
                 mutable singleControls = wrapAncillaErrorArray(temp, get_Ancilla_Prob());
+                ResetAll_Error(singleControls);
 
                 (Controlled X_Gate_Error)(controls, singleControls[0]);
                 FanoutToZero_Error(singleControls[0], singleControls[1..nQubits - 1]);
@@ -502,6 +674,8 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
                 }
                 (Adjoint FanoutToZero_Error)(singleControls[0], singleControls[1..nQubits - 1]);
                 (Controlled X_Gate_Error)(controls, singleControls[0]);
+
+                ResetAll_Error(singleControls);
             }
 
         }
@@ -561,12 +735,15 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
                 } elif (nQubits > 2){
                     use temp = Qubit[nControls] {
                         mutable singleControls = wrapAncillaErrorArray(temp, get_Ancilla_Prob());
+                        ResetAll_Error(singleControls);
 
                         (Controlled FanoutControls_Error)(controls,(singleControls));
                         for idxSwap in 0..nControls - 1 {
                             (Controlled SWAP_Gate_Error)([temp[idxSwap]], (xs[idxSwap], xs[nQubits - 1 - idxSwap]));
                         }
                         (Controlled Adjoint FanoutControls_Error)(controls,(singleControls));
+
+                        ResetAll_Error(singleControls);
                     }
 
                 }
@@ -716,9 +893,15 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
                         mutable spareControls = wrapAncillaErrorArray(temp1, get_Ancilla_Prob());
                         mutable ancillaOutput = wrapAncillaError(temp2, get_Ancilla_Prob());
 
+                        ResetAll_Error(spareControls);
+                        Reset_Error(ancillaOutput);
+
                         CompressControls_Error(xs, spareControls, ancillaOutput);
                         CNOT_Gate_Error(ancillaOutput, output);
                         (Adjoint CompressControls_Error)(xs, spareControls, ancillaOutput);
+
+                        ResetAll_Error(spareControls);
+                        Reset_Error(ancillaOutput);
                     }
                 }
             }
@@ -756,29 +939,41 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
             } elif (nQubits <= 4){
                 borrow temp = Qubit() {
                     mutable ancillaControl = wrapAncillaError(temp, get_Ancilla_Prob());
+                    Reset_Error(ancillaControl);
+
                     LinearMultiControl_Error(controlQubits[0.. nQubits -2], ancillaControl);
                     CCNOTWrapper_Error(controlQubits[nQubits - 1], ancillaControl, output);
                     LinearMultiControl_Error(controlQubits[0.. nQubits -2], ancillaControl);
                     CCNOTWrapper_Error(controlQubits[nQubits - 1], ancillaControl, output);
+
+                    Reset_Error(ancillaControl);
                 }
 
             } elif (nQubits == 5) {
                 borrow temp = Qubit() {
                     mutable ancillaControl = wrapAncillaError(temp, get_Ancilla_Prob());
+                    Reset_Error(ancillaControl);
+
                     LinearMultiControl_Error(controlQubits[0 .. nQubits - 3], ancillaControl);
                     LinearMultiControl_Error(controlQubits[nQubits - 2 .. nQubits - 1] + [ancillaControl], output);
                     LinearMultiControl_Error(controlQubits[0 .. nQubits - 3], ancillaControl);
                     LinearMultiControl_Error(controlQubits[nQubits - 2 .. nQubits - 1] + [ancillaControl], output);
+
+                    Reset_Error(ancillaControl);
                 }
 
             } else {
                 borrow temp = Qubit() {
                     mutable ancillaControl = wrapAncillaError(temp, get_Ancilla_Prob());
+                    Reset_Error(ancillaControl);
+
                     let m = (nQubits + 1) / 2;
                     CascadeControl_Error(controlQubits[0 .. m - 1], ancillaControl);
                     CascadeControl_Error(controlQubits[m .. nQubits - 1] + [ancillaControl], output);
                     CascadeControl_Error(controlQubits[0 .. m - 1], ancillaControl);
                     CascadeControl_Error(controlQubits[m .. nQubits - 1] + [ancillaControl], output);
+
+                    Reset_Error(ancillaControl);
                 }
             }
         }
@@ -812,6 +1007,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
             } else {
                 borrow temp = Qubit[nQubits - 2] {
                     mutable ancillaControls = wrapAncillaErrorArray(temp, get_Ancilla_Prob());
+                    ResetAll_Error(ancillaControls);
 
                     let ancillaTargets = [output] + ancillaControls;
                     for idx in 0 .. nQubits - 3 {
@@ -828,6 +1024,8 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
                     for idx in nQubits - 3 .. (-1) .. 1 {
                         CCNOTWrapper_Error(controlQubits[idx], ancillaControls[idx], ancillaTargets[idx]);
                     }
+
+                    ResetAll_Error(ancillaControls);
                 }
                 
             }
@@ -865,5 +1063,21 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         }
     }
 
+    //from Microsoft.Quantum.Measurement
+    operation MeasureEachZ_Error(register : Qubit_Error[]) : Result[] {
+        mutable results = [];
+
+        for qubit in register {
+            set results += [M_Gate_Error(qubit)];
+        }
+        return results;
+    }
+
+    //from Microsoft.Quantum.Measurement
+    operation MResetZ_Error(target : Qubit_Error) : Result {
+        let (q, p) = target!;
+        _causeError(q, p);
+        return __quantum__qis__mresetz__body(q);
+    }
     
 }
