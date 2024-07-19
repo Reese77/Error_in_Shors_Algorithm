@@ -14,16 +14,16 @@ namespace MyQuantumProgram {
     open Tools;
 
 
-    //@EntryPoint()
+    @EntryPoint()
     operation Main() : (BigInt, BigInt)[] {
-        let p = 5;
-        let q = 7;
-        let len = 10;
+        let p = 47;
+        let q = 23;
+        let len = 20;
         let mod = IntAsBigInt(p * q);
 
         mutable qftresults = [0L, size = len];
         mutable orderresults = [0L, size = len];
-        let guess = 12L;
+        let guess = 30L;
 
         for i in 0 .. len-1 {
             Message($"{i}");

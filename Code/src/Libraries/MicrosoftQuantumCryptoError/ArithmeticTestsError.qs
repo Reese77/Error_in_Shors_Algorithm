@@ -13,32 +13,33 @@ namespace Microsoft.Quantum.Crypto.Error.Tests{
 	open Microsoft.Quantum.Crypto.Error.Arithmetic;
     open Microsoft.Quantum.Crypto.Error.Basics;
 
-    @EntryPoint()
+    //@EntryPoint()
     operation test() : Unit {
         //PASSED
 
-        //CCNOTTest();Message("Passed");
-        //CheckIfAllOnesReversibleTest();Message("Passed"); 
-        //CDKMGAdderExhaustiveTest ();Message("Passed");
-        //AdderExhaustiveTest ();Message("Passed");
-        //RippleCarryAdderNoCarryTTKReversibleTest();Message("Passed"); 
-        //RippleCarryAdderNoCarryTTKExhaustiveTest();Message("Passed"); 
-        //CarryLookAheadAdderNoCarryExhaustiveTest();Message("Passed");
-        //AdderNoCarryExhaustiveTest();Message("Passed");
-        //AddConstantTest();Message("Passed");
-        //AddConstantExhaustiveTest();Message("Passed");
-        //AddConstantReversibleTest();Message("Passed");
-        //AddConstantExhaustiveReversibleTest();Message("Passed");
-        //AddConstantNoCarryReversibleTest();Message("Passed");
-        //AddConstantNoCarryExhaustiveTest();Message("Passed");
-        //GreaterThanConstantLookAheadExhaustiveTest();Message("Passed");
-        //GreaterThanConstantExhaustiveTest();Message("Passed");
-        //LessThanConstantLookAheadExhaustiveTest();Message("Passed");
-        //AddConstantCDKMGNoCarryReversibleTest();Message("Passed");
+        CCNOTTest();Message("Passed");
+        CheckIfAllOnesReversibleTest();Message("Passed"); 
+        CDKMGAdderExhaustiveTest ();Message("Passed");
+        AdderExhaustiveTest ();Message("Passed");
+        RippleCarryAdderNoCarryTTKReversibleTest();Message("Passed"); 
+        RippleCarryAdderNoCarryTTKExhaustiveTest();Message("Passed"); 
+        CarryLookAheadAdderNoCarryExhaustiveTest();Message("Passed");
+        AdderNoCarryExhaustiveTest();Message("Passed");
+        AddConstantTest();Message("Passed");
+        AddConstantExhaustiveTest();Message("Passed");
+        AddConstantReversibleTest();Message("Passed");
+        AddConstantExhaustiveReversibleTest();Message("Passed");
+        AddConstantNoCarryReversibleTest();Message("Passed");
+        AddConstantNoCarryExhaustiveTest();Message("Passed");
+        GreaterThanConstantLookAheadExhaustiveTest();Message("Passed");
+        GreaterThanConstantExhaustiveTest();Message("Passed");
+        LessThanConstantLookAheadExhaustiveTest();Message("Passed");
+        AddConstantCDKMGNoCarryReversibleTest();Message("Passed");
+        GreaterThanExhaustiveReversibleTest();Message("Passed");
+        GreaterThanLookAheadExhaustiveTest();Message("Passed");
+        LessThanConstantExhaustiveTest();Message("Passed");
 
-        //NOT NECESSARY I THINK
-
-        //EqualLookupExhaustiveReversibleTest();Message("Passed"); NOT NECESSARY
+        EqualLookupExhaustiveReversibleTest();Message("Passed"); 
         
         //TAKES TOO LONG
          
@@ -51,18 +52,15 @@ namespace Microsoft.Quantum.Crypto.Error.Tests{
         //AddConstantCDKMGNoCarryExhaustiveReversibleTest();Message("Passed");
         //GreaterThanConstantExhaustiveReversibleTest();Message("Passed");
         //LessThanConstantLookAheadExhaustiveReversibleTest();Message("Passed");
+        //GreaterThanLookAheadExhaustiveReversibleTest();Message("Passed");
+        //GreaterThanCDKMGExhaustiveReversibleTest();Message("Passed");
         
         
         
          //NOT WORKING
          
-        //GreaterThanExhaustiveReversibleTest();Message("Passed");
-        //GreaterThanLookAheadExhaustiveTest();Message("Passed");
-        //GreaterThanLookAheadExhaustiveReversibleTest();Message("Passed");
-        //GreaterThanCDKMGExhaustiveReversibleTest();Message("Passed");
-
         //LessThanConstantExhaustiveReversibleTest();Message("Passed");
-        //LessThanConstantExhaustiveTest();Message("Passed");
+        
     }
 
 
