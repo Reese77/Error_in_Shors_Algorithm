@@ -3,6 +3,32 @@ namespace Tools {
     open Microsoft.Quantum.Convert;
 
 
+
+    function listOfIntegerOverOrder(den : Int) : Double[] {
+        mutable retval = [0.0];
+        mutable index = 1.0;
+        while index <= IntAsDouble(den) {
+            set retval = retval + [index/IntAsDouble(den)];
+            set index += 1.0;
+        }
+        return retval;
+
+    }
+
+    function closestDistance(lst : Double[], num : Double) : (Double, Int) {
+        mutable dist = AbsD(lst[0] - num);
+        mutable integer = 1;
+        for i in 1 .. Length(lst)-1 {
+            let newDist = AbsD(lst[i] - num);
+            if newDist < dist {
+                set dist = newDist;
+                set integer = i;
+            }
+            
+        }
+        return (dist, integer);
+    }
+
     /// # summary
     /// calculates base^exponent
     ///
@@ -165,6 +191,17 @@ namespace Tools {
         return num;
     }
 
+    function ResultBigEndiantoInt(arr : Result[]) : Int {
+        mutable num = 0;
+        let max = Length(arr) - 1;
+        for i in 0 .. max {
+            if arr[i] == One {
+                set num += ExponentI(2, max - i);
+            }
+        }
+        return num;
+    }
+
     /// # summary
     /// calculates gcd(a, b)
     ///
@@ -276,10 +313,26 @@ namespace Tools {
             return bas % mod;
         }
         if exponent % 2L == 1L {
-            return multiplyModular(bas, modularExponentiationL(bas, exponent-1L, mod), mod);
+            return multiplyModularL(bas, modularExponentiationL(bas, exponent-1L, mod), mod);
         }
         let half = modularExponentiationL(bas, exponent/2L, mod);
-        return multiplyModular(half, half, mod);
+        return multiplyModularL(half, half, mod);
+
+    }
+
+    function modularExponentiationI(bas : Int, exponent : Int, mod : Int) : Int {
+        //Message($"{bas}^{exponent} mod {mod}");
+        if exponent == 0 {
+            return 1;
+        }
+        if exponent == 1 {
+            return bas % mod;
+        }
+        if exponent % 2 == 1 {
+            return multiplyModularI(bas, modularExponentiationI(bas, exponent-1, mod), mod);
+        }
+        let half = modularExponentiationI(bas, exponent/2, mod);
+        return multiplyModularI(half, half, mod);
 
     }
 
@@ -307,10 +360,10 @@ namespace Tools {
             return bas % mod;
         }
         if exponent % 2L == 0L {
-            return otherModularExponentiationL(multiplyModular(bas, bas, mod), exponent/2L, mod);
+            return otherModularExponentiationL(multiplyModularL(bas, bas, mod), exponent/2L, mod);
         }
         
-        return multiplyModular(bas, otherModularExponentiationL(bas, exponent-1L, mod), mod);
+        return multiplyModularL(bas, otherModularExponentiationL(bas, exponent-1L, mod), mod);
     }
 
     /// # summary
@@ -327,7 +380,11 @@ namespace Tools {
     /// ## Int
     /// a * b (mod mod)
     ///
-    function multiplyModular(a : BigInt, b : BigInt, mod : BigInt) : BigInt {
+    function multiplyModularL(a : BigInt, b : BigInt, mod : BigInt) : BigInt {
+        return (a * b) % mod;
+    }
+
+    function multiplyModularI(a : Int, b : Int, mod : Int) : Int {
         return (a * b) % mod;
     }
 }
