@@ -1108,6 +1108,18 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         }
     }
 
+    //From Microsoft.Quantum.Canon
+    operation ApplyQFT_Error(qs : Qubit_Error[]) : Unit is Adj + Ctl {
+        let length = Length(qs);
+        Fact(length >= 1, "ApplyQFT: Length(qs) must be at least 1.");
+        for i in length - 1..-1..0 {
+            H_Gate_Error(qs[i]);
+            for j in 0..i - 1 {
+                Controlled R1Frac_Gate_Error([convertQubitErrorToQubit(qs[i])], (1, j + 1, qs[i - j - 1]));
+            }
+        }
+    }
+
     //from Microsoft.Quantum.Measurement
     operation MeasureEachZ_Error(register : Qubit_Error[]) : Result[] {
         mutable results = [];

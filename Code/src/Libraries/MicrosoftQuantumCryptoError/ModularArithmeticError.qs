@@ -122,7 +122,6 @@ namespace Microsoft.Quantum.Crypto.Error.ModularArithmetic {
                 modulus % 2L == 1L, 
                 "ModularDbl requires modulus to be odd." );
 
-            //TODO last bit causes adjoint error everywhere
             use  carry = Qubit()  {
                 mutable ancilla = wrapAncillaError(carry, get_Ancilla_Prob());
                 MeasureReset_Error(ancilla);
