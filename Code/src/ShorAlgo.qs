@@ -124,27 +124,29 @@ namespace Error_In_Shor_Algo {
         //X_Gate_Error(y_error![5]);
 
         //interweaving multiplying the y register with qft
-        for i in 0 .. n1 - 1 {
+
+        //ApplyQFT has the most significant bit come first so no rotations happen to it, it is the control
+        //I changed my recycled version to do that so I do the controlled multiplication starting with the most
+        //significant bit and doing the semiclassical QFT where the most significant bit comes first and controls 
+        //the most number of rotation gates
+        for i in 0 .. n1-1 {
             H_Gate_Error(x_error);
+            
+            Controlled ModularMulByConstantConstantModulusInPlace_Error([x],(IntAsBigInt(mod), IntAsBigInt(precomputed[n1-1 - i]), y_error));
 
-            let (x_qubit, x_prob) = x_error!;
-
-            Controlled ModularMulByConstantConstantModulusInPlace_Error([x_qubit],(IntAsBigInt(mod), IntAsBigInt(precomputed[i]), y_error));
-
-            //do any necessary rotations
-            mutable iterator = 0;
-            while iterator < i {
-                if measuredXReg[iterator] == One {
-                    
-                    R1Frac_Gate_Error(1, i - iterator, x_error);
+            mutable j = 0;
+            while j < i {
+                if measuredXReg[n1-1 - j] == One {
+                    // j=0   will always control the rotation with the biggest power of 2 in denominator
+                    // j=i-1    will always control the rotation with the smallest power of 2 
+                    R1Frac_Gate_Error(1, i-j, x_error);
                 }
-
-                set iterator += 1;
+                set j += 1;
             }
 
             H_Gate_Error(x_error);
 
-            set measuredXReg w/= i <- M_Gate_Error(x_error);
+            set measuredXReg w/= (n1-1 - i) <- M_Gate_Error(x_error);
 
             Reset_Error(x_error);
         }
@@ -192,22 +194,21 @@ namespace Error_In_Shor_Algo {
         //X_Gate_Error(y_error![5]);
 
         //interweaving multiplying the y register with qft
-        for i in 0 .. n1 - 1 {
+        //TODO fix cause something is messed up here
+        for i in n1-1 .. 0 {
             H(x);
-
-            // // let (x_qubit, x_prob) = x_error!;
 
             Controlled ModularMulByConstantConstantModulusInPlace([x],(IntAsBigInt(mod), IntAsBigInt(precomputed[i]), y_le));
 
             //do any necessary rotations
-            mutable iterator = 0;
-            while iterator < i {
-                if measuredXReg[iterator] == One {
+            mutable j = n1-1;
+            while j > i {
+                if measuredXReg[j] == One {
                     
-                    R1Frac(1, i - iterator , x);
+                    R1Frac(1, j - i , x);
                 }
 
-                set iterator += 1;
+                set j -= 1;
             }
 
             H(x);
