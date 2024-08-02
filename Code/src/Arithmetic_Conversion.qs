@@ -202,6 +202,28 @@ namespace Tools {
         return num;
     }
 
+    function ResultLittleEndiantoBigInt(arr : Result[]) : BigInt {
+        mutable num = 0L;
+        let max = Length(arr) - 1;
+        for i in 0 .. max {
+            if arr[i] == One {
+                set num += ExponentL(2L, IntAsBigInt(i));
+            }
+        }
+        return num;
+    }
+
+    function ResultLittleEndiantoInt(arr : Result[]) : Int {
+        mutable num = 0;
+        let max = Length(arr) - 1;
+        for i in 0 .. max {
+            if arr[i] == One {
+                set num += ExponentI(2, i);
+            }
+        }
+        return num;
+    }
+
     /// # summary
     /// calculates gcd(a, b)
     ///

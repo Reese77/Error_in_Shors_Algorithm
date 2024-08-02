@@ -16,18 +16,21 @@ namespace MyQuantumProgram {
 
 
     @EntryPoint()
-    operation Main() : Int {
+    
+    operation Main() : Bool {
+
+        //TODO in the whole library, in every controlled block, run a loop through all controls to cause error with getCTLprob
         let p = 11;
-        let q = 23;
+        let q = 7;
         let len = 1;
         let mod = p * q;
 
         mutable qftresults = [0L, size = len];
         mutable orderresults = [0L, size = len];
-        let guess = 2;
+        let guess = 30;
 
         let order = findOrderofAModNaiveI(guess, mod);
-        let possibleApproximates = listOfIntegerOverOrder(2*order);
+        let possibleApproximates = listOfIntegerOverOrder(order);
 
         // use z = Qubit[6];
         // ApplyXorInPlaceL(35L, z);
@@ -42,25 +45,30 @@ namespace MyQuantumProgram {
         // }
 
 
-        let qftres = findOrderOfAModI(guess, mod);
+        let qftres = findOrderOfAMod_RecycledXRegisterI_Error(guess, mod);
 
-        return qftres;
+        //return qftres;
 
         let continuedFraction = ContinuedFractionExpansionI(qftres, 2^(2 * BitSizeI(mod)));
         let convergents = ConvergentsI(continuedFraction);
 
-        Message($"{2^(2 * BitSizeI(mod))}");
+        Message($"{qftres}/{2^(2 * BitSizeI(mod))}");
+        Message($"1/{order}^2");
         Message($"{convergents}");
         Message($"{closestDistance(possibleApproximates, IntAsDouble(qftres) / IntAsDouble(2^(2 * BitSizeI(mod)) - 1))}");
 
 
         //OPTION 1: Bool of if it should be found since qft/2^n1 < 1/den^2
         let (a, b) = closestDistance(possibleApproximates, IntAsDouble(qftres) / IntAsDouble(2^(2 * BitSizeI(mod)) - 1));
-         //return a ;//< 1.0 / IntAsDouble(order^2);
+        return a < 1.0 / IntAsDouble(order^2);
 
 
         //OPTION 2: Int returning order
         let ordres = RemoveEvenMultiplesI(guess, mod, FindOrderFromQFTI(guess, mod, qftres, 2 * BitSizeI(mod), 4, 0));
+        
+        // if ordres == -1 {
+        //     return -qftres;
+        // }
         // return ordres;
         
 
