@@ -1,7 +1,7 @@
 namespace Tools {
     open Microsoft.Quantum.Math;
     open Microsoft.Quantum.Convert;
-
+    open Microsoft.Quantum.Crypto.Error.Basics;
 
 
     function listOfIntegerOverOrder(den : Int) : Double[] {
@@ -152,6 +152,18 @@ namespace Tools {
         
     }
 
+    operation QubitLittleEndianErrorToInt(qs : Qubit_Error[]) : Int {
+        mutable num = 0;
+        let max = Length(qs) - 1;
+        for i in 0 .. max {
+            if M_Gate_Error(qs[i]) == One {
+                set num += ExponentI(2, max - i);
+            }
+        }
+        return num;
+        
+    }
+
     /// # summary
     /// measures qs and returns the BigInt it represents
     ///
@@ -172,6 +184,20 @@ namespace Tools {
         for i in 0 .. max {
 
             let res = M(qs[i]);
+            if res == One {
+                set num += ExponentL(2L, IntAsBigInt(i));
+            }
+        }
+        return num;
+        
+    }
+
+    operation QubitLittleEndianErrorToBigInt(qs : Qubit_Error[]) : BigInt {
+        mutable num = 0L;
+        let max = Length(qs) - 1;
+        for i in 0 .. max {
+
+            let res = M_Gate_Error(qs[i]);
             if res == One {
                 set num += ExponentL(2L, IntAsBigInt(i));
             }

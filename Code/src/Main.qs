@@ -20,14 +20,14 @@ namespace MyQuantumProgram {
     operation Main() : Bool {
 
         //TODO in the whole library, in every controlled block, run a loop through all controls to cause error with getCTLprob
-        let p = 11;
-        let q = 7;
+        let p = 5;
+        let q = 3;
         let len = 1;
         let mod = p * q;
 
         mutable qftresults = [0L, size = len];
         mutable orderresults = [0L, size = len];
-        let guess = 30;
+        let guess = 2;
 
         let order = findOrderofAModNaiveI(guess, mod);
         let possibleApproximates = listOfIntegerOverOrder(order);
@@ -45,7 +45,7 @@ namespace MyQuantumProgram {
         // }
 
 
-        let qftres = findOrderOfAMod_RecycledXRegisterI_Error(guess, mod);
+        let qftres = findOrderOfAMod_RecycledXRegisterI(guess, mod);
 
         //return qftres;
 
