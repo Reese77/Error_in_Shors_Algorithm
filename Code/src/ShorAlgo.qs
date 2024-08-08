@@ -28,200 +28,32 @@ namespace Error_In_Shor_Algo {
     ///
     operation findDivisorI(n : Int) : Int {
 
-        mutable attempts = 0;
-        while attempts < 25 {
-            set attempts += 1;
-            //generate random guess
-            //because n is huge, chances of picking the same guess are astronomically tiny
-            let guess = GenerateRandomNumberInRangeI(n);
+        let retval = findDivisorL(IntAsBigInt(n));
 
-            //if not coprime, return gcd
-            let gcd = myGCDI(guess, n);
-            if gcd != 1 {
-                return gcd;
-            }
+        return BoolArrayAsInt(BigIntAsBoolArray(retval, BitSizeL(retval)));
 
-            //else, find order mod N
-            //maybe I should do the precomputation here
-            let m = findOrderOfAMod_RecycledXRegisterI_Error(guess, n);
-            let almostOrder = FindOrderFromQFTI(guess, n, m, 2 * BitSizeI(n), 4, 0);
-            let order = RemoveEvenMultiplesI(guess, n, almostOrder);
-
-            //if order is odd, continue to top of loop
-            if order % 2 == 0 {
-                //if guess^halforder is -1 mod n, continue to top of loop
-                let squareRootOf1 = modularExponentiationI(guess, order / 2, n);
-                
-                if squareRootOf1 != n-1 {
-                    //if gcd(guess^halforder + 1, n) != 1, return it
-                    let gcd1 = myGCDI(squareRootOf1 + 1, n);
-                    
-                    if gcd1 != 1 {
-                        return gcd1;
-                    }
-                    //if gcd(guess^halforder - 1, n) != 1, return it
-                    let gcd2 = myGCDI(squareRootOf1 - 1, n);
-
-                    if gcd2 != 1 {
-                        return gcd2;
-                    }
-
-                    
-                }
-            }
-        }
-
-        return 1;
     }
 
 
 
     function findOrderofAModNaiveI(a : Int, mod : Int) : Int {
-        mutable cur = a;
-        mutable counter = 1;
-        while cur != 1 {
-            set cur = (cur * a ) % mod;
-            set counter = counter + 1;
-        }
-        return counter;
+        let retval = findOrderofAModNaiveL(IntAsBigInt(a), IntAsBigInt(mod));
+
+        return BoolArrayAsInt(BigIntAsBoolArray(retval, BitSizeL(retval)));
     }
 
 
     operation findOrderOfAMod_RecycledXRegisterI_Error(a: Int, mod : Int) : Int {
+        let retval = findOrderOfAMod_RecycledXRegisterL_Error(IntAsBigInt(a), IntAsBigInt(mod));
 
-        //n2 is for the y register which is a^x mod N which means it needs enough bits to store up to N-1
-        let n2 = BitSizeI(mod);
-        //n1 is for the x register storing exponents
-        //and since we need to find a period, we need at least N cycles of up to N-1 length
-        //meaning we need to store up to N^2 which uses twice as many bits as N
-        let n1 = n2 * 2;
-        //this is an array for a^(2^i) so allow us to split the exponentiation into multiplication
-        mutable precomputed = [0, size = n1];
-
-        //since we are intermingling the multiplication and QFT inverse, we can reuse the x qubit for each bit
-        use x = Qubit();
-        mutable x_error = Qubit_Error(x, get_X_Prob());
-        use y = Qubit[n2];
-        mutable y_arr = [Qubit_Error(x, get_Y_Prob()), size = n2];
-        for i in 0 .. n2-1 {
-            set y_arr w/= i <- Qubit_Error(y[i], get_Y_Prob());
-        }
-        mutable y_error = LittleEndian_Error(y_arr);
-
-
-        //doing the precomputation for a^(2^i)
-        //I guess this could be passed as a parameter since n is fixed 
-        for i in 0 .. n1-1 {
-            set precomputed w/= i <- modularExponentiationI(a, ExponentI(2, i), mod);
-        }
-
-        //storing the measured values of each "bit" in the x register
-        mutable measuredXReg = [Zero, size = n1];
-
-        //setting y register equal to anything non-zero because it doesn't matter
-        X_Gate_Error(y_error![0]);
-        //X_Gate_Error(y_error![2]);
-        //X_Gate_Error(y_error![5]);
-
-        //interweaving multiplying the y register with qft
-
-        //ApplyQFT has the most significant bit come first so no rotations happen to it, it is the control
-        //I changed my recycled version to do that so I do the controlled multiplication starting with the most
-        //significant bit and doing the semiclassical QFT where the most significant bit comes first and controls 
-        //the most number of rotation gates
-        for i in 0 .. n1-1 {
-            H_Gate_Error(x_error);
-            
-            Controlled ModularMulByConstantConstantModulusInPlace_Error([x],(IntAsBigInt(mod), IntAsBigInt(precomputed[n1-1 - i]), y_error));
-
-            mutable j = 0;
-            while j < i {
-                if measuredXReg[n1-1 - j] == One {
-                    // j=0   will always control the rotation with the biggest power of 2 in denominator
-                    // j=i-1    will always control the rotation with the smallest power of 2 
-                    R1Frac_Gate_Error(1, i-j, x_error);
-                }
-                set j += 1;
-            }
-
-            H_Gate_Error(x_error);
-
-            set measuredXReg w/= (n1-1 - i) <- M_Gate_Error(x_error);
-
-            Reset_Error(x_error);
-        }
-        ResetAll_Error(y_error!);
-
-        return ResultBigEndiantoInt(measuredXReg);
-
+        return BoolArrayAsInt(BigIntAsBoolArray(retval, BitSizeL(retval)));
         
     }
 
     operation findOrderOfAMod_RecycledXRegisterI(a: Int, mod : Int) : Int {
+        let retval = findOrderOfAMod_RecycledXRegisterL(IntAsBigInt(a), IntAsBigInt(mod));
 
-        //n2 is for the y register which is a^x mod N which means it needs enough bits to store up to N-1
-        let n2 = BitSizeI(mod);
-        //n1 is for the x register storing exponents
-        //and since we need to find a period, we need at least N cycles of up to N-1 length
-        //meaning we need to store up to N^2 which uses twice as many bits as N
-        let n1 = n2 * 2;
-        //this is an array for a^(2^i) so allow us to split the exponentiation into multiplication
-        mutable precomputed = [0, size = n1];
-
-        //since we are intermingling the multiplication and QFT inverse, we can reuse the x qubit for each bit
-        use x = Qubit();
-        //// mutable x_error = Qubit_Error(x, get_X_Prob());
-        use y = Qubit[n2];
-        // // mutable y_arr = [Qubit_Error(x, get_Y_Prob()), size = n2];
-        // // for i in 0 .. n2-1 {
-        // //     set y_arr w/= i <- Qubit_Error(y[i], get_Y_Prob());
-        // // }
-        mutable y_le = LittleEndian(y);
-
-
-        //doing the precomputation for a^(2^i)
-        //I guess this could be passed as a parameter since n is fixed 
-        for i in 0 .. n1-1 {
-            set precomputed w/= i <- modularExponentiationI(a, ExponentI(2, i), mod);
-        }
-
-        //storing the measured values of each "bit" in the x register
-        mutable measuredXReg = [Zero, size = n1];
-
-        //setting y register equal to anything non-zero because it doesn't matter
-        X(y_le![0]);
-        //X_Gate_Error(y_error![2]);
-        //X_Gate_Error(y_error![5]);
-
-        //interweaving multiplying the y register with qft
-        //TODO fix cause something is messed up here
-        for i in n1-1 .. 0 {
-            H(x);
-
-            Controlled ModularMulByConstantConstantModulusInPlace([x],(IntAsBigInt(mod), IntAsBigInt(precomputed[i]), y_le));
-
-            //do any necessary rotations
-            mutable j = n1-1;
-            while j > i {
-                if measuredXReg[j] == One {
-                    
-                    R1Frac(1, j - i , x);
-                }
-
-                set j -= 1;
-            }
-
-            H(x);
-
-            set measuredXReg w/= i <- M(x);
-
-            Reset(x);
-        }
-        ResetAll(y_le!);
-
-        return ResultBigEndiantoInt(measuredXReg);
-
-        
+        return BoolArrayAsInt(BigIntAsBoolArray(retval, BitSizeL(retval)));
     }
 
 
@@ -244,237 +76,58 @@ namespace Error_In_Shor_Algo {
     ///
     operation findOrderOfAModI_Error(a : Int, mod : Int) : Int{
 
-        //n2 is for the y register which is a^x mod N which means it needs enough bits to store up to N-1
-        let n2 = BitSizeI(mod);
-        //n1 is for the x register storing exponents
-        //and since we need to find a period, we need at least N cycles of up to N-1 length
-        //meaning we need to store up to N^2 which uses twice as many bits as N
-        let n1 = n2 * 2;
-        //this is an array for a^(2^i) so allow us to split the exponentiation into multiplication
-        mutable precomputed = [0, size = n1];
+        let retval = findOrderOfAModL_Error(IntAsBigInt(a), IntAsBigInt(mod));
 
-        mutable xreg = 0;
-
-
-        use x = Qubit[n1]{
-            mutable x_arr = [Qubit_Error(x[0], get_X_Prob()), size = n1];
-            for i in 0 .. n1-1 {
-                set x_arr w/= i <- Qubit_Error(x[i], get_X_Prob());
-            }
-            mutable x_error = LittleEndian_Error(x_arr);
-
-
-            use y = Qubit[n2]{
-                mutable y_arr = [Qubit_Error(y[0], get_Y_Prob()), size = n2];
-                for i in 0 .. n2-1 {
-                    set y_arr w/= i <- Qubit_Error(y[i], get_Y_Prob());
-                }
-                mutable y_error = LittleEndian_Error(y_arr);
-
-
-
-                //doing the precomputation for a^(2^i)
-                //I guess this could be passed as a parameter since n is fixed 
-                for i in 0 .. n1-1 {
-                    set precomputed w/= i <- modularExponentiationI(a, ExponentI(2, i), mod);
-                }
-                
-                //setting x register to be a unformly random superposition of all numbers 0 to N^2
-                for i in 0 .. n1-1 {
-                    H_Gate_Error(x_arr[i]);
-                }
-
-                
-                //setting y register equal to 1
-                X_Gate_Error(y_arr[0]);
-
-                
-                
-                //incrementally multiplying y by a^(2^i) mod N, controlled by whether x[i] is 0 or 1
-                for i in 0 .. n1-1 {
-                    let (x_qubit, x_prob) = x_error![i]!;
-
-                    Controlled ModularMulByConstantConstantModulusInPlace_Error([x_qubit],(IntAsBigInt(mod), IntAsBigInt(precomputed[i]), y_error));
-                }
-
-                
-
-                let yreg = QubitLittleEndianToInt(y);
-
-                //DumpMachine();
-                ResetAll(y);
-
-            }
-
-            
-
-            //now only the x values that caused the measured y value remain in superposition
-            //we can find the frequency by appylying QFT and inverting that to find period
-
-            ApplyQFT_Error(x_arr);
-
-            DumpMachine();
-
-            set xreg = QubitLittleEndianToInt(x);
-
-            ResetAll(x);
-
-        }
-
-        //extracting period length
-        return xreg;
+        return BoolArrayAsInt(BigIntAsBoolArray(retval, BitSizeL(retval)));
         
     }
 
     operation findOrderOfAModI(a : Int, mod : Int) : Int{
+        let retval = findOrderOfAModL(IntAsBigInt(a), IntAsBigInt(mod));
 
-        //n2 is for the y register which is a^x mod N which means it needs enough bits to store up to N-1
-        let n2 = BitSizeI(mod);
-        //n1 is for the x register storing exponents
-        //and since we need to find a period, we need at least N cycles of up to N-1 length
-        //meaning we need to store up to N^2 which uses twice as many bits as N
-        let n1 = n2 * 2;
-        //this is an array for a^(2^i) so allow us to split the exponentiation into multiplication
-        mutable precomputed = [0, size = n1];
-
-        use x = Qubit[n1];
-        
-        use y = Qubit[n2];
-        
-        mutable y_le = LittleEndian(y);
-
-        //doing the precomputation for a^(2^i)
-        //I guess this could be passed as a parameter since n is fixed 
-        for i in 0 .. n1-1 {
-            set precomputed w/= i <- modularExponentiationI(a, ExponentI(2, i), mod);
-        }
-        
-        //setting x register to be a unformly random superposition of all numbers 0 to N^2
-        for i in 0 .. n1-1 {
-            H(x[i]);
-        }
-
-        //setting y register equal to 1
-        X(y[0]);
-
-        //DumpMachine();
-
-        //incrementally multiplying y by a^(2^i) mod N, controlled by whether x[i] is 0 or 1
-        for i in 0 .. n1-1 {
-            Message($"{i}");
-            Controlled ModularMulByConstantConstantModulusInPlace([x[i]],(IntAsBigInt(mod), IntAsBigInt(precomputed[i]), y_le));
-        }
-
-        //DumpMachine();
-
-        let yreg = QubitLittleEndianToInt(y);
-
-        //DumpMachine();
-        ResetAll(y);
-
-        //now only the x values that caused the measured y value remain in superposition
-        //we can find the frequency by appylying QFT and inverting that to find period
-
-        ApplyQFT(x);
-
-        DumpMachine();
-
-        let xreg = QubitLittleEndianToInt(x);
-
-        ResetAll(x);
-        
-
-        //extracting period length
-        return xreg;
+        return BoolArrayAsInt(BigIntAsBoolArray(retval, BitSizeL(retval)));
         
     }
 
     
     function FindOrderFromQFTI(guess : Int, mod : Int, qftresult : Int, n1 : Int, doubles : Int, epsilon : Int) : Int {
-        let Q = 2^n1;
+        let retval = FindOrderFromQFTL(IntAsBigInt(guess), IntAsBigInt(mod), IntAsBigInt(qftresult)
+                                        , n1, doubles, IntAsBigInt(epsilon));
 
-        let continuedFraction = ContinuedFractionExpansionI(qftresult, Q);
-        let convergents = ConvergentsI(continuedFraction);
-
-        //Message("Finished calculating convergents");
-
-        for (num, den) in convergents {
-            mutable copy = doubles;
-            mutable multiple = 1;
-            //Message($"den: {den}");
-            if den > 0 and den < mod {
-                while copy > 0 and den*multiple < mod{
-                    //Message($"copy: {copy}");
-                    //Message($"multiple: {multiple}");
-                    mutable power = MaxI(den*multiple - epsilon, 1);
-                    
-                    while power <= den*multiple + epsilon and power < mod{
-                        if (modularExponentiationI(guess, power, mod) == 1) {
-                            return power;
-                        }
-                        set power += 1;
-                    }
-
-                    
-                    set multiple *= 2;
-                    set copy /= 2;
-                    
-                }
-            }
-        }
-        return -1;
+        return BoolArrayAsInt(BigIntAsBoolArray(retval, BitSizeL(retval)));
 
     }
 
     function RemoveEvenMultiplesI(guess : Int, mod : Int, answer : Int) : Int {
-        mutable candidate = answer;
+        let retval = RemoveEvenMultiplesL(IntAsBigInt(guess), IntAsBigInt(mod), IntAsBigInt(answer));
 
-        while candidate%2 == 0 and modularExponentiationI(guess, candidate / 2, mod) == 1 {
-                set candidate /= 2;
-        }
-        return candidate;
+        return BoolArrayAsInt(BigIntAsBoolArray(retval, BitSizeL(retval)));
     }
 
     function ContinuedFractionExpansionI(numerator : Int, denominator : Int) : Int[] {
-        mutable result = [];
-        mutable a = numerator;
-        mutable b = denominator;
-        mutable i = 0;
-        while (b != 0) {
-            let q = a / b;
-            set result += [q];
-            let temp = b;
-            set b = a % b;
-            set a = temp; 
-            //Message($"q{i}: {q}");
-            set i += 1;
+        let retval = ContinuedFractionExpansionL(IntAsBigInt(numerator), IntAsBigInt(denominator));
+
+        mutable ret = [];
+        for i in retval {
+            set ret += [BoolArrayAsInt(BigIntAsBoolArray(i, BitSizeL(i)))];
         }
-        
-        return result;
+        return ret;
     }
 
 
     function ConvergentsI(continuedFraction : Int[]) : (Int, Int)[] {
-        mutable convergentsList = [];
-        mutable prevNumerator = 1;
-        mutable prevPrevNumerator = 0;
-        mutable prevDenominator = 0;
-        mutable prevPrevDenominator = 1;
-
-        for term in continuedFraction {
-            let currentNumerator = term * prevNumerator + prevPrevNumerator;
-            let currentDenominator = term * prevDenominator + prevPrevDenominator;
-            set convergentsList += [(currentNumerator, currentDenominator)];
-            //Message($"{currentNumerator}/{currentDenominator}");
-
-            // Update previous values for the next iteration
-            set prevPrevNumerator = prevNumerator;
-            set prevNumerator = currentNumerator;
-            set prevPrevDenominator = prevDenominator;
-            set prevDenominator = currentDenominator;
+        mutable input :BigInt[]= [];
+        for i in continuedFraction {
+            set input += [IntAsBigInt(i)];
         }
 
-        return convergentsList;
+        let retval = ConvergentsL( input );
+
+        mutable ret = [];
+        for (num, den) in retval {
+            set ret += [( BoolArrayAsInt(BigIntAsBoolArray(num, BitSizeL(num))), BoolArrayAsInt(BigIntAsBoolArray(den, BitSizeL(den))) ) ];
+        }
+        return ret;
     }
 
     /// # summary
@@ -585,31 +238,28 @@ namespace Error_In_Shor_Algo {
 
         //setting y register equal to anything non-zero because it doesn't matter
         X_Gate_Error(y_error![0]);
-        //X_Gate_Error(y_error![2]);
-        //X_Gate_Error(y_error![5]);
+        
 
         //BigInterweaving multiplying the y register with qft
         for i in 0 .. n1 - 1 {
             H_Gate_Error(x_error);
 
-            let (x_qubit, x_prob) = x_error!;
-
-            Controlled ModularMulByConstantConstantModulusInPlace_Error([x_qubit],(mod, precomputed[i], y_error));
+            Controlled ModularMulByConstantConstantModulusInPlace_Error([x],(mod, precomputed[n1-1 - i], y_error));
 
             //do any necessary rotations
-            mutable iterator = 0;
-            while iterator < i {
-                if measuredXReg[iterator] == One {
+            mutable j = 0;
+            while j < i {
+                if measuredXReg[n1-1 - j] == One {
                     
-                    R1Frac_Gate_Error(1, i - iterator, x_error);
+                    R1Frac_Gate_Error(1, i - j, x_error);
                 }
 
-                set iterator += 1;
+                set j += 1;
             }
 
             H_Gate_Error(x_error);
 
-            set measuredXReg w/= i <- M_Gate_Error(x_error);
+            set measuredXReg w/= (n1-1 - i) <- M_Gate_Error(x_error);
 
             Reset_Error(x_error);
         }
@@ -650,30 +300,37 @@ namespace Error_In_Shor_Algo {
 
         //setting y register equal to anything non-zero because it doesn't matter
         X(y[0]);
-        //X_Gate_Error(y_error![2]);
-        //X_Gate_Error(y_error![5]);
+        Message("Set y=1");
 
         //BigInterweaving multiplying the y register with qft
         for i in 0 .. n1 - 1 {
+            Message($"H({n1-1 - i})");
             H(x);
 
-
-            Controlled ModularMulByConstantConstantModulusInPlace([x],(mod, precomputed[i], y_le));
+            Message($"Multiplication ");
+            Message($"control: x{n1-1 - i}");
+            Message($"precomputed: {n1-1 - i}");
+            Message("");
+            Controlled ModularMulByConstantConstantModulusInPlace([x],(mod, precomputed[n1-1 - i], y_le));
 
             //do any necessary rotations
-            mutable iterator = 0;
-            while iterator < i {
-                if measuredXReg[iterator] == One {
+            mutable j = 0;
+            while j < i {
+                Message($"Rotation by {i-j}");
+                Message($"Control: x{n1-1 - j}");
+                Message($"Target x{n1-1 - i}");
+                Message("");
+                if measuredXReg[n1-1 - j] == One {
                     
-                    R1Frac(1, i - iterator, x);
+                    R1Frac(1, i - j, x);
                 }
 
-                set iterator += 1;
+                set j += 1;
             }
-
+            Message($"H({n1-1 - i})");
             H(x);
 
-            set measuredXReg w/= i <- M(x);
+            set measuredXReg w/= (n1-1 - i) <- M(x);
 
             Reset(x);
         }
@@ -777,10 +434,16 @@ namespace Error_In_Shor_Algo {
 
         mutable xreg = 0L;
 
+        //doing the precomputation for a^(2^i)
+        //precomputed is little endian so index 0 corresponds to a^2^0
+        for i in 0 .. n1-1 {
+            set precomputed w/= i <- modularExponentiationL(a, ExponentL(2L, IntAsBigInt(i)), mod);
+        }
 
+        //write print statements everywhere to recreate the circuit diagram
         use x = Qubit[n1]{
             mutable x_arr = [Qubit_Error(x[0], get_X_Prob()), size = n1];
-            for i in 0 .. n1-1 {
+            for i in 1 .. n1-1 {
                 set x_arr w/= i <- Qubit_Error(x[i], get_X_Prob());
             }
             mutable x_error = LittleEndian_Error(x_arr);
@@ -788,42 +451,38 @@ namespace Error_In_Shor_Algo {
 
             use y = Qubit[n2]{
                 mutable y_arr = [Qubit_Error(y[0], get_Y_Prob()), size = n2];
-                for i in 0 .. n2-1 {
+                for i in 1 .. n2-1 {
                     set y_arr w/= i <- Qubit_Error(y[i], get_Y_Prob());
                 }
                 mutable y_error = LittleEndian_Error(y_arr);
 
-
-
-                //doing the precomputation for a^(2^i)
-                //I guess this could be passed as a parameter since n is fixed 
-                for i in 0 .. n1-1 {
-                    set precomputed w/= i <- modularExponentiationL(a, ExponentL(2L, IntAsBigInt(i)), mod);
-                }
                 
                 //setting x register to be a unformly random superposition of all numbers 0 to N^2
                 for i in 0 .. n1-1 {
                     H_Gate_Error(x_arr[i]);
+                    Message($"H({i})");
                 }
 
                 
                 //setting y register equal to 1
                 X_Gate_Error(y_arr[0]);
 
-                
+                Message("y=1\n");
 
                 //incrementally multiplying y by a^(2^i) mod N, controlled by whether x[i] is 0 or 1
-                for i in 0 .. n1-1 {
-                    let (x_qubit, x_prob) = x_error![i]!;
-
-                    Controlled ModularMulByConstantConstantModulusInPlace_Error([x_qubit],(mod, precomputed[i], y_error));
+                for i in n1-1 ..-1.. 0 {
+                    Message($"Multiplication ");
+                    Message($"control: x{i}");
+                    Message($"precomputed: {i}");
+                    Message("");
+                    Controlled ModularMulByConstantConstantModulusInPlace_Error([x[i]],(mod, precomputed[i], y_error));
                 }
 
                 
 
-                let yreg = QubitLittleEndianToInt(y);
+                let yreg = QubitLittleEndianErrorToInt(y_arr);
 
-                DumpMachine();
+                //DumpMachine();
                 ResetAll(y);
 
             }
@@ -835,7 +494,7 @@ namespace Error_In_Shor_Algo {
 
             ApplyQFT_Error(x_arr);
 
-            set xreg = QubitLittleEndianToBigInt(x);
+            set xreg = QubitLittleEndianErrorToBigInt(x_arr);
 
             ResetAll(x);
 
@@ -853,16 +512,13 @@ namespace Error_In_Shor_Algo {
         let continuedFraction = ContinuedFractionExpansionL(qftresult, Q);
         let convergents = ConvergentsL(continuedFraction);
 
-        //Message("Finished calculating convergents");
-
         for (num, den) in convergents {
             mutable copy = doubles;
             mutable multiple = 1L;
-            //Message($"den: {den}");
+
             if den > 0L and den < mod {
                 while copy > 0 and den*multiple < mod{
-                    //Message($"copy: {copy}");
-                    //Message($"multiple: {multiple}");
+
                     mutable power = MaxL(den*multiple - epsilon, 1L);
                     
                     while power <= den*multiple + epsilon and power < mod{
@@ -903,7 +559,6 @@ namespace Error_In_Shor_Algo {
             let temp = b;
             set b = a % b;
             set a = temp; 
-            //Message($"q{i}: {q}");
             set i += 1;
         }
         
@@ -922,7 +577,6 @@ namespace Error_In_Shor_Algo {
             let currentNumerator = term * prevNumerator + prevPrevNumerator;
             let currentDenominator = term * prevDenominator + prevPrevDenominator;
             set convergentsList += [(currentNumerator, currentDenominator)];
-            //Message($"{currentNumerator}/{currentDenominator}");
 
             // Update previous values for the next iteration
             set prevPrevNumerator = prevNumerator;
