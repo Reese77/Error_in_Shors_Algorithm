@@ -99,9 +99,17 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
             for i in controls {
                 _causeError(i, get_Ctrl_Prob());
             }
+            _causeError(q,prob_error);
 
         }
         adjoint(...){
+            _causeError(q,prob_error);
+        }
+        controlled adjoint (controls, ...) {
+            for i in controls {
+                _causeError(i, get_Ctrl_Prob());
+            }
+            _causeError(q,prob_error);
         }
     }
 
@@ -232,7 +240,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         adjoint (...) {
             MeasureReset_Error(qubit);
         }
-        controlled adjoint (...) {
+        controlled adjoint (controls, ...) {
             MeasureReset_Error(qubit);
         }
     }
@@ -1110,13 +1118,22 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
 
     //From Microsoft.Quantum.Canon
     operation ApplyQFT_Error(qs : Qubit_Error[]) : Unit is Adj + Ctl {
+        Message("starting qft");
+
         let length = Length(qs);
         Fact(length >= 1, "ApplyQFT: Length(qs) must be at least 1.");
         for i in length - 1..-1..0 {
+            Message($"H({i})");
             H_Gate_Error(qs[i]);
             for j in 0..i - 1 {
+                Message("");
+                Message($"Rotation by {j+1}");
+                Message($"Control: x{i}");
+                Message($"Target x{i-j-1}");
+                
                 Controlled R1Frac_Gate_Error([convertQubitErrorToQubit(qs[i])], (1, j + 1, qs[i - j - 1]));
             }
+            Message("");
         }
     }
 
