@@ -6,6 +6,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
     open Microsoft.Quantum.Math;
     open Microsoft.Quantum.Diagnostics;
     open Microsoft.Quantum.Random;
+
     open QIR.Intrinsic;
 
     ////IMPORTANT comments starting with /// were copied over and may not be accurate
@@ -16,12 +17,15 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
     //Prob is an array of Int between 0-1 000 000 denoting the probability,
     //  that some type of error occurs before applying the intended gate
     //  Note: read ThingsToNote.md part 6
+
     newtype Qubit_Error = (qubit : Qubit, ProbError : Int[]);
 
     newtype LittleEndian_Error = (Data : Qubit_Error[]);
 
+
     //// SECTION 1: Probability
     //// functions to get error probability arrays
+
 
     function get_X_Prob() : Int[] {
         return [0, 0];
@@ -35,13 +39,16 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         return [0, 0];
     }
 
+
     function get_Ctrl_Prob() : Int[] {
         return [0, 0];
     }
 
+
     function get_Prob() : Int[] {
         return [0, 0];
     }
+
 
 
     /// # Description
@@ -119,6 +126,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
     ///
     /// # Output
     /// ## Qubit_Error[]
+
     function wrapAncillaErrorArray(q_arr : Qubit[], probs : Int[]) : Qubit_Error[] {
         
         mutable ret_val = [Qubit_Error(q_arr[0], probs), size = Length(q_arr)];
@@ -128,6 +136,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         }
         return ret_val;
     }
+
 
     /// # Description
     /// takes qubit and one int array of probabilities,
@@ -142,9 +151,11 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
     ///
     /// # Output
     /// ## Qubit_Error
+
     function wrapAncillaError(q : Qubit, probs : Int[]) : Qubit_Error {
         return Qubit_Error(q, probs);
     }
+
 
     /// # Description
     /// given a Qubit_Error, returns just the qubit part
@@ -155,10 +166,12 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
     ///
     /// # Output
     /// ## Qubit
+
     function convertQubitErrorToQubit(qe : Qubit_Error) : Qubit {
         let (q, e) = qe!;
         return q;
     }
+
 
     /// # Description
     /// basically the same as wrapAncillaError
@@ -173,9 +186,11 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
     ///
     /// # Output
     /// ## Qubit_Error
+
     function convertQubitToQubitError(q : Qubit, probs : Int[]) : Qubit_Error {
         return Qubit_Error(q, probs);
     }
+
 
     /// # Description
     /// basically the same as wrapAncillaErrorArray
@@ -202,6 +217,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         return ret_val;
     }
 
+
     /// # Description
     /// given array of Qubit_Error, return just the qubit parts
     ///
@@ -215,6 +231,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         if Length(qe_arr) == 0 {
             return [];
         }
+
         let (a, b) = qe_arr[0]!;
         mutable ret_val = [a, size = Length(qe_arr)];
 
@@ -233,6 +250,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
 
     //Same type of comment for all of these,
     // unwrap Qubit_Error, causeError, apply intended gate
+
     operation X_Gate_Error(qe : Qubit_Error) : Unit is Adj + Ctl{
         let (qubit, prob_error) = qe!;
 
@@ -310,6 +328,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         //intended gate
         T(qubit);
     }
+
     
     //This isn't quite a basic gate so I used the equivalency in the link below
     //https://learn.microsoft.com/en-us/qsharp/api/qsharp-lang/microsoft.quantum.intrinsic/swap
@@ -321,17 +340,21 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
 
     //This isn't quite a basic gate so I used the equivalency in the link below
     //https://learn.microsoft.com/en-us/qsharp/api/qsharp-lang/microsoft.quantum.intrinsic/rfrac
+
     operation RFrac_Gate_Error(pauli : Pauli, numerator : Int, power : Int, qubit : Qubit_Error) : Unit is Adj + Ctl{
         R_Gate_Error(pauli, -PI() * IntAsDouble(numerator) / IntAsDouble(2 ^ (power - 1)), qubit);
     }
 
+
     //This isn't quite a basic gate so I used the equivalency in the link below
     //https://learn.microsoft.com/en-us/qsharp/api/qsharp-lang/microsoft.quantum.intrinsic/r1frac
+
     operation R1Frac_Gate_Error(numerator : Int, power : Int, qubit : Qubit_Error) : Unit is Adj + Ctl{
         RFrac_Gate_Error(PauliZ, -numerator, power + 1, qubit);
         RFrac_Gate_Error(PauliI, numerator, power + 1, qubit);
 
     }
+
 
     
 
@@ -448,6 +471,8 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
 
     //// necessary functions copied from MicrosoftQuantumCrypto library
 
+
+
     function IsTestable () : Bool {
         return true;
     }
@@ -464,7 +489,9 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         return false;
 	}
 
+
     //// Quantum operations coppied from MicrosoftQuantumCrypto Basics.qs
+
 
     // some changes due to ancilla
     /// # Summary
@@ -529,6 +556,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
     operation ccnot_T_depth_1_Error (control1 : Qubit_Error, control2 : Qubit_Error, target : Qubit_Error) : Unit is Adj + Ctl {
         use temp = Qubit[4] {
             mutable auxillaryRegister = wrapAncillaErrorArray(temp, get_Ancilla_Prob());
+
             MeasureResetAll_Error(auxillaryRegister);
 
             // apply UVU† where U is outer circuit and V is inner circuit
@@ -539,7 +567,9 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
             }
 
 
+
             MeasureResetAll_Error(auxillaryRegister);
+
         }
     }
 
@@ -622,6 +652,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         }
         controlled adjoint auto;
     }
+
     /// # Summary
     /// Sequential QRAM look-up, where a qubit register storing an 
     /// address controls which element of a classical array is written 
@@ -746,6 +777,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         }
     }
 
+
     /// # Summary
     /// Acts like a CCNOTWrapper, but with one input classical.
     /// It flips the target if the logical AND
@@ -860,7 +892,9 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
 
             use temp = Qubit[nQubits] {
                 mutable singleControls = wrapAncillaErrorArray(temp, get_Ancilla_Prob());
+
                 MeasureResetAll_Error(singleControls);
+
 
                 (Controlled X_Gate_Error)(controls, singleControls[0]);
                 FanoutToZero_Error(singleControls[0], singleControls[1..nQubits - 1]);
@@ -870,7 +904,9 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
                 (Adjoint FanoutToZero_Error)(singleControls[0], singleControls[1..nQubits - 1]);
                 (Controlled X_Gate_Error)(controls, singleControls[0]);
 
+
                 MeasureResetAll_Error(singleControls);
+
             }
 
         }
@@ -920,7 +956,9 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
             SwapReverseRegister_Error(xs);
         }
         controlled (controls, ...){
+
             if (IsMinimizeWidthCostMetric()) { // don't fanout with low width
+
                 (Controlled SwapReverseRegister_Error)(controls, (xs));
             } else {
                 let nQubits = Length(xs);
@@ -930,7 +968,9 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
                 } elif (nQubits > 2){
                     use temp = Qubit[nControls] {
                         mutable singleControls = wrapAncillaErrorArray(temp, get_Ancilla_Prob());
+
                         MeasureResetAll_Error(singleControls);
+
 
                         (Controlled FanoutControls_Error)(controls,(singleControls));
                         for idxSwap in 0..nControls - 1 {
@@ -938,7 +978,9 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
                         }
                         (Controlled Adjoint FanoutControls_Error)(controls,(singleControls));
 
+
                         MeasureResetAll_Error(singleControls);
+
                     }
 
                 }
@@ -1088,6 +1130,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
                         mutable spareControls = wrapAncillaErrorArray(temp1, get_Ancilla_Prob());
                         mutable ancillaOutput = wrapAncillaError(temp2, get_Ancilla_Prob());
 
+
                         MeasureResetAll_Error(spareControls);
                         MeasureReset_Error(ancillaOutput);
 
@@ -1097,6 +1140,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
 
                         MeasureResetAll_Error(spareControls);
                         MeasureReset_Error(ancillaOutput);
+
                     }
                 }
             }
@@ -1126,7 +1170,9 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         body (...){
             let nQubits = Length(controlQubits);
             if (nQubits == 0){
+
                 // do nothing
+
             } elif (nQubits == 1){
                 CNOT_Gate_Error(controlQubits[0], output);
             } elif (nQubits == 2){
@@ -1134,6 +1180,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
             } elif (nQubits <= 4){
                 borrow temp = Qubit() {
                     mutable ancillaControl = wrapAncillaError(temp, get_Ancilla_Prob());
+
                     MeasureReset_Error(ancillaControl);
 
                     LinearMultiControl_Error(controlQubits[0.. nQubits -2], ancillaControl);
@@ -1141,12 +1188,15 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
                     LinearMultiControl_Error(controlQubits[0.. nQubits -2], ancillaControl);
                     CCNOTWrapper_Error(controlQubits[nQubits - 1], ancillaControl, output);
 
+
                     MeasureReset_Error(ancillaControl);
+
                 }
 
             } elif (nQubits == 5) {
                 borrow temp = Qubit() {
                     mutable ancillaControl = wrapAncillaError(temp, get_Ancilla_Prob());
+
                     MeasureReset_Error(ancillaControl);
 
                     LinearMultiControl_Error(controlQubits[0 .. nQubits - 3], ancillaControl);
@@ -1154,13 +1204,17 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
                     LinearMultiControl_Error(controlQubits[0 .. nQubits - 3], ancillaControl);
                     LinearMultiControl_Error(controlQubits[nQubits - 2 .. nQubits - 1] + [ancillaControl], output);
 
+
                     MeasureReset_Error(ancillaControl);
+
                 }
 
             } else {
                 borrow temp = Qubit() {
                     mutable ancillaControl = wrapAncillaError(temp, get_Ancilla_Prob());
+
                     MeasureReset_Error(ancillaControl);
+
 
                     let m = (nQubits + 1) / 2;
                     CascadeControl_Error(controlQubits[0 .. m - 1], ancillaControl);
@@ -1168,7 +1222,9 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
                     CascadeControl_Error(controlQubits[0 .. m - 1], ancillaControl);
                     CascadeControl_Error(controlQubits[m .. nQubits - 1] + [ancillaControl], output);
 
+
                     MeasureReset_Error(ancillaControl);
+
                 }
             }
         }
@@ -1202,7 +1258,9 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
             } else {
                 borrow temp = Qubit[nQubits - 2] {
                     mutable ancillaControls = wrapAncillaErrorArray(temp, get_Ancilla_Prob());
+
                     MeasureResetAll_Error(ancillaControls);
+
 
                     let ancillaTargets = [output] + ancillaControls;
                     for idx in 0 .. nQubits - 3 {
@@ -1220,7 +1278,9 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
                         CCNOTWrapper_Error(controlQubits[idx], ancillaControls[idx], ancillaTargets[idx]);
                     }
 
+
                     MeasureResetAll_Error(ancillaControls);
+
                 }
                 
             }
@@ -1232,12 +1292,14 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
     }
 
 
+
     //// SECTION 5: STANDARD LIBRARY
     //// Qubit_Error versions of operations from standard libraries
     //// I will add links to Github repo with the originals
 
     //From Microsoft.Quantum.Canon
     //https://github.com/microsoft/qsharp/blob/d1fb2a164a3ec4db73506beda3a70e097ddaacc9/library/std/src/canon.qs#L572
+
     operation ApplyXorInPlaceL_Error(value : BigInt, target : Qubit_Error[]) : Unit is Adj + Ctl {
         body (...) {
             Fact(value >= 0L, "`value` must be non-negative.");
@@ -1255,13 +1317,16 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
 
 
     //From Microsoft.Quantum.Canon
+
     //https://github.com/microsoft/qsharp/blob/d1fb2a164a3ec4db73506beda3a70e097ddaacc9/library/std/src/canon.qs#L528
+
     operation SwapReverseRegister_Error(register : Qubit_Error[]) : Unit is Adj + Ctl {
         let length = Length(register);
         for i in 0..length / 2 - 1 {
             SWAP_Gate_Error(register[i], register[(length - i) - 1]);
         }
     }
+
 
     //From Microsoft.Quantum.Canon
     //https://github.com/microsoft/qsharp/blob/d1fb2a164a3ec4db73506beda3a70e097ddaacc9/library/std/src/canon.qs#L511
@@ -1303,5 +1368,6 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         _causeError(q, p);
         return __quantum__qis__mresetz__body(q);
     }
+
     
 }

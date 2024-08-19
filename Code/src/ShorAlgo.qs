@@ -222,12 +222,14 @@ namespace Error_In_Shor_Algo {
 
         //since we are BigIntermingling the multiplication and QFT inverse, we can reuse the x qubit for each bit
         use x = Qubit();
+
         mutable x_error = Qubit_Error(x, get_X_Prob());
 
         use y = Qubit[n2];
         mutable y_arr = [Qubit_Error(x, get_Y_Prob()), size = n2];
         for i in 0 .. n2-1 {
             set y_arr w/= i <- Qubit_Error(y[i], get_Y_Prob());
+
         }
         mutable y_error = LittleEndian_Error(y_arr);
 
@@ -252,7 +254,9 @@ namespace Error_In_Shor_Algo {
             // in the non-recycled version, H is applied to whole x register to create superposition of all numbers
             H_Gate_Error(x_error);
 
+
             Controlled ModularMulByConstantConstantModulusInPlace_Error([x],(mod, precomputed[i], y_error));
+
 
             //QFT part
             //do any necessary rotations
@@ -273,6 +277,7 @@ namespace Error_In_Shor_Algo {
             Reset_Error(x_error);
         }
         ResetAll_Error(y_error!);
+
 
         return ResultLittleEndiantoBigInt(measuredXReg);
     }
@@ -362,6 +367,7 @@ namespace Error_In_Shor_Algo {
         }
         ResetAll(y_le!);
 
+
         return ResultBigEndiantoBigInt(measuredXReg);
 
         
@@ -396,7 +402,10 @@ namespace Error_In_Shor_Algo {
         //this is an array for a^(2^i) so allow us to split the exponentiation BigInto multiplication
         mutable precomputed = [0L, size = n1];
 
+        use z = Qubit();
+
         use x = Qubit[n1];
+
 
         use y = Qubit[n2];
         
@@ -410,16 +419,18 @@ namespace Error_In_Shor_Algo {
         
         //setting x register to be a unformly random superposition of all numbers 0 to N^2
         for i in 0 .. n1-1 {
-            H(x[i]);
+            H_Gate_Error(x_arr[i]);
         }
 
         //setting y register equal to 1
-        X(y[0]);
+        X_Gate_Error(y_arr[0]);
 
         //incrementally multiplying y by a^(2^i) mod N, controlled by whether x[i] is 0 or 1
         for i in 0 .. n1-1 {
 
+
             Controlled ModularMulByConstantConstantModulusInPlace([x[i]],(mod, precomputed[i], y_le));
+
         }
 
         let yreg = QubitLittleEndianToBigInt(y);

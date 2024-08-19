@@ -28,6 +28,7 @@ namespace Tools {
     }
 
 
+
     /// # summary
     /// generates a uniformly random number between 0 and max
     ///
