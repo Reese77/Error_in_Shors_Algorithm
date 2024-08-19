@@ -9,6 +9,12 @@ namespace Microsoft.Quantum.Crypto.Error.ModularArithmetic {
     open Microsoft.Quantum.Crypto.Error.Basics;
 
 
+    ////IMPORTANT comments starting with /// were copied over and may not be accurate
+    //// some comments within operation that start with //{space}{stuff} are probably also copied over
+    //// they were segments of code commented out via Ctrl+K+C, or single line explainatory comments
+
+
+
     //ModularMul not copied over
 
     //ModularSqu not copied over
@@ -69,11 +75,18 @@ namespace Microsoft.Quantum.Crypto.Error.ModularArithmetic {
 
             use carry = Qubit() {
                 mutable ancilla = wrapAncillaError(carry, get_Ancilla_Prob());
+
+                MeasureReset_Error(ancilla);
+
                 (Controlled AddInteger_Error) (controls, (xs, ys, ancilla)); 
                 (Adjoint AddConstant_Error)(modulus, LittleEndian_Error(ys! + [ancilla]));
                 (Controlled AddConstant_Error) ([carry], (modulus, ys));
                 (Controlled GreaterThanWrapper_Error) (controls, (xs, ys, ancilla));
                 X_Gate_Error(ancilla);
+
+
+                MeasureReset_Error(ancilla);
+
             }
             
         }
@@ -118,9 +131,11 @@ namespace Microsoft.Quantum.Crypto.Error.ModularArithmetic {
                 modulus % 2L == 1L, 
                 "ModularDbl requires modulus to be odd." );
 
-            //TODO last bit causes adjoint error everywhere
+
             use  carry = Qubit()  {
                 mutable ancilla = wrapAncillaError(carry, get_Ancilla_Prob());
+                MeasureReset_Error(ancilla);
+
 
                 let xxs = LittleEndian_Error( xs! + [ancilla] );
 
@@ -131,6 +146,10 @@ namespace Microsoft.Quantum.Crypto.Error.ModularArithmetic {
                 (Controlled AddConstant_Error) ([carry], (modulus, xs));
                 (Controlled CNOT_Gate_Error) (controls, (xs![0], ancilla));
                 X_Gate_Error(ancilla);
+
+
+                MeasureReset_Error(ancilla);
+
             }
             
         }
@@ -214,18 +233,28 @@ namespace Microsoft.Quantum.Crypto.Error.ModularArithmetic {
             let constantinv = InverseModL(constant, modulus);
             use temp = Qubit[Length(xs!)] {
                 mutable ys = wrapAncillaErrorArray(temp, get_Ancilla_Prob());
+
+                MeasureResetAll_Error(ys);
+
+
                 let ysLE = LittleEndian_Error(ys);
                 (Controlled SwapLE_Error)(controls, (xs, ysLE));
                 (Controlled ModularMulByConstantConstantModulus_Error)(controls, (modulus, constant, ysLE, xs));
                 (Adjoint Controlled ModularMulByConstantConstantModulus_Error)(controls, (modulus, constantinv, xs, ysLE));
+
+
+                MeasureResetAll_Error(ys);
+
             }
         }
         controlled adjoint auto;
     }
 
 
+    ////Nothing has been copied over after this point
 
-    //MONTGONMERY ARITHMETIC
+    ////MONTGONMERY ARITHMETIC
 
-    //Nothing has been copied over after this point
+    
+
 }

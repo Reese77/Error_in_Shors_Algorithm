@@ -27,11 +27,11 @@ namespace Tools {
 
         //applying H and R gates
         for i in 0 .. lastIndex {
-            Message($"i: {i}");
+            //Message($"i: {i}");
             H(qs[i]);
             set divisor = 2.0;
             for j in i+1 .. lastIndex {
-                Message($"j: {j}");
+                //Message($"j: {j}");
                 Controlled R1([qs[j]], (PI()/divisor, qs[i]));
                 set divisor *= 2.0;
             }
@@ -39,7 +39,7 @@ namespace Tools {
         }
         //applying swaps
         for i in 0 .. Length(qs)/2 - 1 {
-            Message($"{i}");
+            //Message($"{i}");
             SWAP(qs[i], qs[lastIndex - i]);
         }
 

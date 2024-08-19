@@ -5,6 +5,7 @@
 /// This is a minimal Q# program that can be used to start writing Q# code.
 namespace MyQuantumProgram {
 
+    import Microsoft.Quantum.Diagnostics.DumpMachine;
     open Microsoft.Quantum.Arrays;
     open Microsoft.Quantum.Math;
     open Microsoft.Quantum.Intrinsic;
@@ -12,39 +13,69 @@ namespace MyQuantumProgram {
     open Microsoft.Quantum.Canon;
     open Error_In_Shor_Algo;
     open Tools;
-    //@EntryPoint()
-    operation other() : Unit {
-        
-        Message($"{FindOrderFromQFT(12L, 253L, 26513L, 16, 4, 0L)}");
-    }
+
 
     @EntryPoint()
-    operation Main() : (BigInt, BigInt)[] {
+    operation Main() :  (Int, Bool) {
+        //variables for setup
+        //2 safe primes and their product
         let p = 23;
-        let q = 11;
-        let len = 10;
-        let mod = IntAsBigInt(p * q);
+        let q = 47;
+        let mod = p * q;
+        //number we want to find order of
+        let guess = 2;
 
-        mutable qftresults = [0L, size = len];
-        mutable orderresults = [0L, size = len];
-        let guess = 20L;
-
-        for i in 0 .. len-1 {
-            Message($"{i}");
-            set qftresults w/= i <-findOrderOfAMod_RecycledXRegister(guess, mod);
-            set orderresults w/= i <- RemoveEvenMultiples(guess, mod, FindOrderFromQFT(guess, mod, qftresults[i], 2 * BitSizeL(mod), 4, 0L));
-        }
-        return Zipped(qftresults, orderresults);
+        //classically find order for debugging purposes
+        let order = findOrderofAModNaiveI(guess, mod);
+        let possibleApproximates = listOfIntegerOverOrder(order);
         
-        //return findOrderOfAMod_RecycledXRegister(guess, mod);
-        let result = findOrderOfAMod_RecycledXRegister(guess, mod);
 
-        //Message($"Found result: {result}");
+        let len = 200;
+        // OPTION 1: Works similar to histogram repeating len times. 
+        // Either return Int[] or (Int[], Int[])
+        // First is just the integer you measure immediately after QFT
+        // Second is first and whatever order candidate you get when applying fraction expansion to qft result
 
-        let candidate = FindOrderFromQFT(guess, mod, result, 2 * BitSizeL(mod), 4, 0L);
+        // mutable qftresults = [0, size = len];
+        // mutable orderresults = [0, size = len];
+        // for i in 0 .. len-1 {
+        //     Message($"{i}");
+        //     set qftresults w/= i <-findOrderOfAMod_RecycledXRegisterI(guess, mod);
+        //     // set orderresults w/= i <- RemoveEvenMultiplesI(guess, mod, FindOrderFromQFTI(guess, mod, qftresults[i], 2 * BitSizeL(mod), 4, 0L));
+        // }
+        // return qftresults;
 
-        //return (result, candidate);
+        //
+        let qftres = findOrderOfAMod_RecycledXRegisterI(guess, mod);
 
-        //return RemoveEvenMultiples(guess, mod, candidate);
+        //compute list of fractions that are approximates of qftres/2^n
+        let continuedFraction = ContinuedFractionExpansionI(qftres, 2^(2 * BitSizeI(mod)));
+        let convergents = ConvergentsI(continuedFraction);
+
+        //Some important information for debugging and seeing what the algo did
+        Message($"{qftres}/{2^(2 * BitSizeI(mod))}");
+        Message($"1/{order}^2");
+        Message($"{convergents}");
+        Message($"{closestDistance(possibleApproximates, IntAsDouble(qftres) / IntAsDouble(2^(2 * BitSizeI(mod)) - 1))}");
+        Message("");
+
+        //OPTION 2: Bool of if it should be found since qft/2^n1 < 1/den^2
+        // You could also just return a if you want
+        let (a, b) = closestDistance(possibleApproximates, IntAsDouble(qftres) / IntAsDouble(2^(2 * BitSizeI(mod))));
+        //return a < 1.0 / IntAsDouble(order^2);
+
+
+        //OPTION 3: Int returning order candidate
+        let ordres = RemoveEvenMultiplesI(guess, mod, FindOrderFromQFTI(guess, mod, qftres, 2 * BitSizeI(mod), 4, 0));
+        
+        //if we don't get an order, it's nice to know what the qftres was 
+        if ordres == -1 {
+            return (-ordres, a < 1.0 / IntAsDouble(order^2));
+        }
+        return (ordres, a < 1.0 / IntAsDouble(order^2));
+        
+
+        //OPTION 4: (Int, Int) returning order and qft to check
+        // return (ordres, qftres);
     }
 }

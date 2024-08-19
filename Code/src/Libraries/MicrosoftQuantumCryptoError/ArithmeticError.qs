@@ -9,7 +9,11 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
     open Microsoft.Quantum.Crypto.Arithmetic;
     open Microsoft.Quantum.Crypto.Error.Basics;
 
-    //IMPORTANT comments starting with /// were copied over and may not be accurate
+
+    ////IMPORTANT comments starting with /// were copied over and may not be accurate
+    //// some comments within operation that start with //{space}{stuff} are probably also copied over
+    //// they were segments of code commented out via Ctrl+K+C, or single line explainatory comments
+
 
     /// # Summary
     /// Carries out a strictly greater than comparison of two integers x
@@ -45,7 +49,35 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
     }
 
     //GreaterThanConstant not copied over
-    //LessThanConstant not copied over
+
+
+    /// # Summary
+    /// Carries out a strictly less than comparison of a an integer x
+    /// encoded in a qubit register against a constant integer c. If x<c, then the
+    /// result qubit will be flipped, otherwise retain its state.
+    ///
+    /// # Inputs
+    /// ## constant
+    /// BigInt constant $c$.
+    /// ## xs
+    /// LittleEndian qubit register encoding the integer $x$
+    /// ## carry
+    /// Single qubit that will be flipped if $x<c$.
+    operation LessThanConstant_Error(constant : BigInt, xs : LittleEndian_Error, result : Qubit_Error) : Unit {
+        body (...){
+            if (IsMinimizeDepthCostMetric()) {
+                LessThanConstantLookAhead_Error(constant, xs, result);
+            } elif (IsMinimizeTCostMetric()) {
+                CompareToConstant_Error(false, CKDMGGreaterThan_Error, constant, xs, result);
+            } else {
+                CompareToConstant_Error(false, GreaterThanTTK_Error, constant, xs, result);
+            }
+            //
+            
+        }
+        controlled adjoint auto;
+    }
+
 
     /// # Summary
     /// Reversible, in-place adder with carry. Given two n-bit integers
@@ -187,11 +219,17 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
                 use temp = Qubit[Length(xs!)] {
                     mutable singleControls = wrapAncillaErrorArray(temp, get_Ancilla_Prob());
 
+                    MeasureResetAll_Error(singleControls);
+
+
                     (Controlled FanoutControls_Error)(controls, (singleControls));
                     for idx in 0..Length(xs!) - 1 {
                         (Controlled SWAP_Gate_Error)([temp[idx]], (xs![idx], ys![idx]));
                     }
                     (Controlled Adjoint FanoutControls_Error)(controls, (singleControls));
+
+                    MeasureResetAll_Error(singleControls);
+
                 }
             }
         }
@@ -203,7 +241,37 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
 
     //PositionsOfOnesInBigInt not copied over
 
-    //MeasureBigInteger not copeid over
+
+    /// # Summary
+    /// Measures the content of a quantum register and converts
+    /// it to an integer. The measurement is performed with respect
+    /// to the standard computational basis, i.e., the eigenbasis of PauliZ.
+    ///
+    /// # Input
+    /// ## target
+    /// A quantum register in the little-endian encoding.
+    ///
+    /// # Output
+    /// ## BigInt
+    /// An unsigned BigInt that contains the measured value of `target`
+    ///
+    /// # Remarks
+    /// This operation resets its input register to the all-zeros
+    /// state, suitable for releasing back to a target machine.
+    operation MeasureBigInteger_Error(target : LittleEndian_Error) : BigInt {
+        let targetAsBoolArray= ResultArrayAsBoolArray(MeasureEachZ_Error(target!));
+        mutable measuredBigInt = 0L;
+        for idxB in Length(targetAsBoolArray)-1..(-1)..0 {
+            set measuredBigInt=2L * measuredBigInt;
+            if (targetAsBoolArray[idxB]){
+                set measuredBigInt = measuredBigInt + 1L;
+                X_Gate_Error(target![idxB]); // new addition
+            }
+        }
+        MeasureResetAll_Error(target!);
+        return measuredBigInt;
+    }
+
 
 
     /// # Summary
@@ -231,6 +299,9 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
             borrow temp = Qubit[nQubits] {
 
                 mutable g = wrapAncillaErrorArray(temp, get_Ancilla_Prob());
+
+                MeasureResetAll_Error(g);
+
                 let gs = LittleEndian_Error(g);
 
                 if ( nQubits > 3) {
@@ -248,6 +319,10 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
                 } elif (nQubits == 1) {
                     X_Gate_Error (xs![0]);
                 }
+
+
+                MeasureResetAll_Error(g);
+
             }
             
         }
@@ -347,12 +422,19 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
             } else {
                 borrow temp = Qubit[nQubits-1] {
                     mutable gs = wrapAncillaErrorArray(temp, get_Ancilla_Prob());
+                    
+                    MeasureResetAll_Error(gs);
+
 
                     (Controlled CNOT_Gate_Error) (controls, (gs[nQubits - 2], carry));
                     _ComputeCarryCascade_Error(constant, xs, LittleEndian_Error(gs));
                     (Controlled CNOT_Gate_Error) (controls, (gs[nQubits - 2], carry));
                     (Adjoint _ComputeCarryCascade_Error) (constant, xs, 
                                                     LittleEndian_Error(gs));
+
+
+                    MeasureResetAll_Error(gs);
+
                 }
             }
         }
@@ -399,6 +481,9 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
                 borrow temp = Qubit() {
                     mutable gs = wrapAncillaError(temp, get_Ancilla_Prob());
 
+                    MeasureReset_Error(gs);
+
+
                     Increment_Error(LittleEndian_Error([gs] + xsHigher!));
                     X_Gate_Error(gs);
 
@@ -412,6 +497,10 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
                     (Controlled ComputeCarry_Error)(controls, (constantLower, xsLower, gs));
 
                     ApplyToEachWrapperCA(CNOT_Gate_Error(gs, _), xsHigher!);
+
+
+                    MeasureReset_Error(gs);
+
                 }
                 
                 (Controlled _CarryAndDivide_Error)(controls, (constantLower, xsLower));
@@ -566,10 +655,18 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
             
             use temp = Qubit[nQubits] {
                 mutable constantQubits = wrapAncillaErrorArray(temp, get_Ancilla_Prob());
+
+                MeasureResetAll_Error(constantQubits);
+
+
                 let constants = LittleEndian_Error(constantQubits);
                 (Controlled ApplyXorInPlaceL_Error)(controls, (constant, constants!));
                 _CDKMGAdderInner_Error(false, constants, xs, []);
                 (Controlled Adjoint ApplyXorInPlaceL_Error)(controls, (constant, constants!));
+
+
+                MeasureResetAll_Error(constantQubits);
+
             }
         }
         controlled adjoint auto;
@@ -701,6 +798,9 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
                 use temp = Qubit[nQubits] {
                     mutable carries = wrapAncillaErrorArray(temp, get_Ancilla_Prob());
 
+                    MeasureResetAll_Error(carries);
+
+
                     AndWrapper_Error(xs![0], ys![0], carries[0]);
                     for idx in 1..nQubits - 1 {
                         (Controlled _CDKMGBlockForward_Error)(controls, (carries[idx - 1], xs![idx], ys![idx], carries[idx]));
@@ -713,6 +813,10 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
                     }
                     (Adjoint AndWrapper_Error)(xs![0], ys![0], carries[0]);
                     (Controlled CNOT_Gate_Error)(controls, (xs![0], ys![0]));
+
+
+                    MeasureResetAll_Error(carries);
+
                 }
             }
         }
@@ -749,7 +853,47 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
         controlled adjoint auto;
     }
 
-    //CompareToConstant not copied over
+
+    /// # Summary
+    /// Uses a quantum comparator to compare
+    /// a quantum integer to a constant by
+    /// writing the constant into an ancilla register
+    /// 
+    operation CompareToConstant_Error (
+        isGreaterThan : Bool,
+        Comparator : ((LittleEndian_Error, LittleEndian_Error, Qubit_Error) => Unit is Ctl + Adj),
+        constant : BigInt, 
+        xs : LittleEndian_Error, 
+        carry : Qubit_Error 
+    ) : Unit {
+        body (...) {
+            (Controlled CompareToConstant_Error)([], (isGreaterThan, Comparator, constant, xs, carry));
+        }
+        controlled (controls, ...){
+            let nQubits = Length(xs!);
+            use temp = Qubit[nQubits] {
+                mutable constantQubits = wrapAncillaErrorArray(temp, get_Ancilla_Prob());
+                MeasureResetAll_Error(constantQubits);
+
+                let constants = LittleEndian_Error(constantQubits);
+                if (isGreaterThan){
+                    ApplyToEachWrapperCA(X_Gate_Error, constantQubits);
+                    (Controlled ApplyXorInPlaceL_Error)(controls, (2L^nQubits - 1L - constant, constants!));
+                    Comparator(xs, constants, carry);
+                    (Controlled Adjoint ApplyXorInPlaceL_Error)(controls, (2L^nQubits - 1L - constant, constants!));
+                    (Adjoint ApplyToEachWrapperCA)(X_Gate_Error, constantQubits);
+                } else {
+                    (Controlled ApplyXorInPlaceL_Error)(controls, (constant, constants!));
+                    Comparator(constants, xs, carry);
+                    (Controlled Adjoint ApplyXorInPlaceL_Error)(controls, (constant, constants!));
+                }
+
+                MeasureResetAll_Error(constantQubits);
+            }
+        }
+        controlled adjoint auto;
+    }
+
 
 
 
@@ -792,6 +936,9 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
                 use temp = Qubit[nQubits] {
                     mutable carries = wrapAncillaErrorArray(temp, get_Ancilla_Prob());
 
+                    MeasureResetAll_Error(carries);
+
+
                     AndWrapper_Error(xs![0], ys![0], carries[0]);
                     for idx in 1..nQubits - 1 {
                         _CDKMGBlockForward_Error (carries[idx - 1], xs![idx], ys![idx], carries[idx]);
@@ -801,6 +948,10 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
                         (Adjoint _CDKMGBlockForward_Error)(carries[idx - 1], xs![idx], ys![idx], carries[idx]);
                     }
                     (Adjoint AndWrapper_Error)(xs![0], ys![0], carries[0]);
+
+
+                    MeasureResetAll_Error(carries);
+
                 }
                 
                 ApplyToEachCA(Adjoint X_Gate_Error, ys!);
@@ -855,7 +1006,12 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
                 use temp = Qubit() {
                     mutable bonusQubit = wrapAncillaError(temp, get_Ancilla_Prob());
 
+                    MeasureReset_Error(bonusQubit);
+
                     _CLAAdderImpl_Error(CNOT_Gate_Error, CCNOTWrapper_Error, AndWrapper_Error, false, xs! + [bonusQubit], ys! + [carry], []);
+
+                    MeasureReset_Error(bonusQubit);
+
                 }
             } else {
                 _CLAAdderImpl_Error(CNOT_Gate_Error, CCNOTWrapper_Error, AndWrapper_Error, true, xs!, ys!,  [carry]);
@@ -988,7 +1144,9 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
             (Controlled _CLAAdderImpl_Error)([], (cqCNOT,cqCCNOTWrapper, cqAND, useCarry, xs, ys, carry));
         }
         controlled(controls, ...){
-            //Control logic : The circuit can be split into 5 steps : 
+
+            // Control logic : The circuit can be split into 5 steps : 
+
             // 1) Prepare the initial carries
             // 2) Compute all carries
             // 3) Compute the sum
@@ -1025,12 +1183,17 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
                 use temp1 = Qubit[ancillaSize] {
                     mutable ancillaQubits = wrapAncillaErrorArray(temp1, get_Ancilla_Prob());
 
+                    MeasureResetAll_Error(ancillaQubits);
+
+
                     let gens = ancillaQubits[0..nQubits - 2] + carry;
                     let propArrays = PropArrays_Error(ancillaQubits[nQubits - 1..ancillaSize - 1], ys);
                     // 1) Compute initial carries
                 
                     cqAND(xs[0], ys[0], gens[0]);
-                    (Controlled cqCNOT)(controls, (xs[0], ys[0]));//will not be uncomputed
+
+                    (Controlled cqCNOT)(controls, (xs[0], ys[0]));// will not be uncomputed
+
                     for idx in 1..nQubits - 2 {
                         cqAND(xs[idx], ys[idx], gens[idx]);
                         cqCNOT(xs[idx], ys[idx]);
@@ -1038,7 +1201,9 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
                     if (useCarry){
                         (Controlled cqCCNOTWrapper)(controls, (xs[nQubits - 1], ys[nQubits -1], gens[nQubits - 1]));//will not be uncomputed
                     }
-                    (Controlled cqCNOT)(controls, (xs[nQubits - 1], ys[nQubits -1]));//will not be uncomputed
+
+                    (Controlled cqCNOT)(controls, (xs[nQubits - 1], ys[nQubits -1]));// will not be uncomputed
+
 
                     // 2) Compute all carries
                     if (useCarry){
@@ -1059,6 +1224,9 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
                         use temp2 = Qubit[nQubits - 1] {
                             mutable singleControls = wrapAncillaErrorArray(temp2, get_Ancilla_Prob());
 
+                            MeasureResetAll_Error(singleControls);
+
+
                             (Controlled FanoutControls_Error)(controls, (singleControls));
                             CNOT_Gate_Error(singleControls[0], ys[0]);
                             CCNOTWrapper_Error(singleControls[0], gens[0], ys[1]);
@@ -1068,8 +1236,12 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
                                 cqCCNOTWrapper(xs[ids], singleControls[ids], ys[ids]);
                             }
                             (Controlled Adjoint FanoutControls_Error)(controls, (singleControls));
+
+
+                            MeasureResetAll_Error(singleControls);
                         }
-                    } else {//without controls
+                    } else {// without controls
+
                         X_Gate_Error(ys[0]);
                         CNOT_Gate_Error(gens[0], ys[1]);
                         for ids in 1..nQubits - 2 {
@@ -1092,8 +1264,12 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
                         (Adjoint cqAND)(xs[ids], ys[ids], gens[ids]);
                     }
                         
-                    //This final negation had no inverse in step (1)
+
+                    // This final negation had no inverse in step (1)
                     (Controlled ApplyToEachWrapperCA)(controls, (X_Gate_Error, ys[0..nQubits - 2]));
+
+                    MeasureResetAll_Error(ancillaQubits);
+
                 }
             }
         }
@@ -1135,11 +1311,18 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
                 use temp = Qubit[2] {	
                     mutable bonusQubits = wrapAncillaErrorArray(temp, get_Ancilla_Prob());
 
+                    MeasureResetAll_Error(bonusQubits);
+
+
                     (Controlled GreaterThanLookAhead_Error)(controls, (
                         LittleEndian_Error(xs! + [bonusQubits[0]]),
                         LittleEndian_Error(ys! + [bonusQubits[1]]),
                         carry)
                     );
+
+
+                    MeasureResetAll_Error(bonusQubits);
+
                 }
 
             } else {
@@ -1158,9 +1341,108 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
         controlled adjoint auto;
     }
 
-    //GreaterThanConstantLookAhead not copied over
 
-    //LessThanConstantLookAhead not copied over
+    /// # Summary
+    /// Carries out a strictly greater than comparison of a an integer x
+    /// encoded in a qubit register against a constant integer c. If x>c, then the
+    /// result qubit will be flipped, otherwise retain its state.
+    ///
+    /// # Inputs
+    /// ## constant
+    /// Classical constant c.
+    /// ## xs
+    /// Qubit register encoding the integer x.
+    /// ## carry
+    /// Single qubit that will be flipped if x>c.
+    ///
+    /// # Remarks
+    /// This operation has a similar struction to GreaterThanLookahead, 
+    /// but with a reduced number of controlled gates.
+    /// Uses the trick that $x - y = (x' + y)'$, where ' denotes one's
+    /// complement.
+    ///
+    /// # References
+    /// Thomas G. Graper, Samuel A. Kutin, Eric M. Rains, Krysta M. Svore : 
+    ///    "A Logarithmic - Depth Quantum Carry - Lookahead Adder"
+    ///    Quantum Information and Computation, 2006
+    ///    https : //arxiv.org/abs/quant - ph/0406142
+    /// This does not implement the comparator described in the reference, 
+    /// but simply alters the addition circuit to only output the carry.
+    operation GreaterThanConstantLookAhead_Error(constant : BigInt, xs : LittleEndian_Error, carry : Qubit_Error) : Unit {
+        body (...){
+            let nQubits = Length(xs!);
+            if (constant >= 2L^nQubits - 1L){
+                // Since xs <= 2^nQubits -1, in this case the constant
+                // must be greater, so we do not clip the carry
+            } else {
+                let constantComplement = constant ^^^ 2L^nQubits - 1L;
+                let constantArray = BigIntAsBoolArray(constantComplement, BitSizeL(constantComplement)) + [false, size = nQubits - BitSizeL(constantComplement)];
+                _CompareLookAheadImpl_Error(
+                    ClassicalCNOT_Error,
+                    ClassicalCCNOT_Error,
+                    ClassicalAND_Error,
+                    constantArray[0..nQubits - 1],
+                    xs!,
+                    carry
+                );
+            }
+        }
+        controlled adjoint auto;
+    }
+
+    /// # Summary
+    /// Carries out a strictly greater than comparison of a constant integer c
+    /// against an integer x encoded in a qubit register. If c<x, then the
+    /// result qubit will be flipped, otherwise retain its state.
+    ///
+    /// # Inputs
+    /// ## constant
+    /// Classical constant c.
+    /// ## xs
+    /// Qubit register encoding the integer x.
+    /// ## carry
+    /// Single qubit that will be flipped if c<x.
+    ///
+    /// # Remarks
+    /// This operation has a similar struction to GreaterThanLookahead, 
+    /// but with a reduced number of controlled gates.
+    /// Uses the trick that x - y=(x' + y)', where ' denotes one's
+    /// complement.
+    ///
+    /// # References
+    /// Thomas G. Graper, Samuel A. Kutin, Eric M. Rains, Krysta M. Svore : 
+    ///    "A Logarithmic - Depth Quantum Carry - Lookahead Adder"
+    ///    Quantum Information and Computation, 2006
+    ///    https : //arxiv.org/abs/quant - ph/0406142
+    /// This does not implement the comparator described in the reference, 
+    /// but simply alters the addition circuit to only output the carry.
+    operation LessThanConstantLookAhead_Error(constant : BigInt, xs : LittleEndian_Error, carry : Qubit_Error) : Unit{
+        body (...){
+            (Controlled LessThanConstantLookAhead_Error)([], (constant, xs, carry));
+        }
+        controlled (controls, ...) {
+            let nQubits = Length(xs!);
+            if (constant > 2L^nQubits - 1L){
+                // Since xs <= 2^nQubits -1, in this case the constant
+                // must be greater, so we fip the carry without any work
+                (Controlled X_Gate_Error)(controls, (carry));
+            } else {
+                let constantArray = BigIntAsBoolArray(constant, BitSizeL(constant)) + [false, size = nQubits - BitSizeL(constant)];
+                ApplyToEachWrapperCA(X_Gate_Error, xs!);
+                (Controlled _CompareLookAheadImpl_Error)(controls,  (
+                    ClassicalCNOT_Error,
+                    ClassicalCCNOT_Error,
+                    ClassicalAND_Error,
+                    constantArray[0.. nQubits -1], 
+                    xs!, 
+                    carry
+                ));
+                ApplyToEachWrapperCA(X_Gate_Error, xs!);
+            }
+        }
+        controlled adjoint auto;
+    }
+
 
 
     /// # Summary
@@ -1201,7 +1483,9 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
         cqCNOT : (('T, Qubit_Error) => Unit is Ctl + Adj),
         cqCCNOTWrapper : (('T, Qubit_Error, Qubit_Error) => Unit is Ctl + Adj),
         cqAND : (('T, Qubit_Error, Qubit_Error) => Unit is Ctl + Adj),
-        xs : 'T[], //pre-complemented
+
+        xs : 'T[], // pre-complemented
+
         ys : Qubit_Error[], 
         carry : Qubit_Error
     ) : Unit {
@@ -1217,7 +1501,9 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
         }
         controlled(controls, ...){
             let nQubits = Length(xs);
-            if (nQubits==1){//edge case
+
+            if (nQubits==1){// edge case
+
                 (Controlled cqCCNOTWrapper)(controls, (xs[0], ys[0], carry));
             } else {
                 let logn = Floor(Lg(IntAsDouble(nQubits)));
@@ -1225,6 +1511,9 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
 
                 use temp1 = Qubit[ancillaSize] {
                     mutable ancillaQubits = wrapAncillaErrorArray(temp1, get_Ancilla_Prob());
+
+                    MeasureResetAll_Error(ancillaQubits);
+
 
                     let gens = ancillaQubits[0..nQubits - 2] + [carry];
                     let propArrays = PropArrays_Error(ancillaQubits[nQubits - 1..ancillaSize - 1], ys);
@@ -1253,6 +1542,10 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
                         (Adjoint cqAND)(xs[ids], ys[ids], gens[ids]);
                     }
                     cqCNOT(xs[nQubits - 1], ys[nQubits - 1]);
+
+
+                    MeasureResetAll_Error(ancillaQubits);
+
                 }
             }
         }
@@ -1336,14 +1629,16 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
             }
         }
         controlled (controls, ...){
-        //The full adder must uncompute these carries at the end, 
-        //so we save controls by not controlling this operation.
-        //However : When uncomputing, the adder only calls
-        //this operation with nQubits-1. Thus, we must
-        //control the individual operations that use
-        //qubits in the n-1 position.
-        //Hence, each of the "rounds" must check whether the
-        //indices are high enough to need the controls.
+
+        // The full adder must uncompute these carries at the end, 
+        // so we save controls by not controlling this operation.
+        // However : When uncomputing, the adder only calls
+        // this operation with nQubits-1. Thus, we must
+        // control the individual operations that use
+        // qubits in the n-1 position.
+        // Hence, each of the "rounds" must check whether the
+        // indices are high enough to need the controls.
+
             let logn = Floor(Lg(IntAsDouble(nQubits)));
             // P rounds
             for idxRound in 1..logn - 1 {
@@ -1396,14 +1691,16 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
             }
         }
         controlled (controls, ...){
-            //The full adder must uncompute these carries at the end, 
-            //so we save controls by not controlling this operation.
-            //However : When uncomputing, the adder only calls
-            //this operation with nQubits-1. Thus, we must
-            //control the individual operations that use
-            //qubits in the n-1 position.
-            //Hence, each of the "rounds" must check whether the
-            //indices are high enough to need the controls.
+
+            // The full adder must uncompute these carries at the end, 
+            // so we save controls by not controlling this operation.
+            // However : When uncomputing, the adder only calls
+            // this operation with nQubits-1. Thus, we must
+            // control the individual operations that use
+            // qubits in the n-1 position.
+            // Hence, each of the "rounds" must check whether the
+            // indices are high enough to need the controls.
+
             let logn = Floor(Lg(IntAsDouble(nQubits)));
             for idxRound in 1..logn {
                 let lognmin1 = Floor(Lg(IntAsDouble(nQubits - 1)));
@@ -1460,14 +1757,16 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
             }
         }
         controlled (controls, ...){
-            //The full adder must uncompute these carries at the end, 
-            //so we save controls by not controlling this operation.
-            //However : When uncomputing, the adder only calls
-            //this operation with nQubits-1. Thus, we must
-            //control the individual operations that use
-            //qubits in the n-1 position.
-            //Hence, each of the "rounds" must check whether the
-            //indices are high enough to need the controls.
+
+            // The full adder must uncompute these carries at the end, 
+            // so we save controls by not controlling this operation.
+            // However : When uncomputing, the adder only calls
+            // this operation with nQubits-1. Thus, we must
+            // control the individual operations that use
+            // qubits in the n-1 position.
+            // Hence, each of the "rounds" must check whether the
+            // indices are high enough to need the controls.
+
             let log2nover3 = Floor(Lg(2.0 * IntAsDouble(nQubits) / 3.0));	
             for idxRound in log2nover3..( - 1)..1 {
                 let log2nmin1over3 = Floor(Lg(2.0 * IntAsDouble(nQubits - 1) / 3.0));
