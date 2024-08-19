@@ -8,6 +8,10 @@ namespace Microsoft.Quantum.Crypto.Error.ModularArithmetic {
     open Microsoft.Quantum.Crypto.Error.Arithmetic;
     open Microsoft.Quantum.Crypto.Error.Basics;
 
+    ////IMPORTANT comments starting with /// were copied over and may not be accurate
+    //// some comments within operation that start with //{space}{stuff} are probably also copied over
+    //// they were segments of code commented out via Ctrl+K+C, or single line explainatory comments
+
 
     //ModularMul not copied over
 
@@ -233,9 +237,9 @@ namespace Microsoft.Quantum.Crypto.Error.ModularArithmetic {
         controlled adjoint auto;
     }
 
+    ////Nothing has been copied over after this point
 
+    ////MONTGONMERY ARITHMETIC
 
-    //MONTGONMERY ARITHMETIC
-
-    //Nothing has been copied over after this point
+    
 }

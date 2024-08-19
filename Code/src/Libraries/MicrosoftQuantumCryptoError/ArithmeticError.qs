@@ -9,7 +9,9 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
     open Microsoft.Quantum.Crypto.Arithmetic;
     open Microsoft.Quantum.Crypto.Error.Basics;
 
-    //IMPORTANT comments starting with /// were copied over and may not be accurate
+    ////IMPORTANT comments starting with /// were copied over and may not be accurate
+    //// some comments within operation that start with //{space}{stuff} are probably also copied over
+    //// they were segments of code commented out via Ctrl+K+C, or single line explainatory comments
 
     /// # Summary
     /// Carries out a strictly greater than comparison of two integers x
@@ -45,6 +47,7 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
     }
 
     //GreaterThanConstant not copied over
+
     /// # Summary
     /// Carries out a strictly less than comparison of a an integer x
     /// encoded in a qubit register against a constant integer c. If x<c, then the
@@ -1105,7 +1108,7 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
             (Controlled _CLAAdderImpl_Error)([], (cqCNOT,cqCCNOTWrapper, cqAND, useCarry, xs, ys, carry));
         }
         controlled(controls, ...){
-            //Control logic : The circuit can be split into 5 steps : 
+            // Control logic : The circuit can be split into 5 steps : 
             // 1) Prepare the initial carries
             // 2) Compute all carries
             // 3) Compute the sum
@@ -1148,7 +1151,7 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
                     // 1) Compute initial carries
                 
                     cqAND(xs[0], ys[0], gens[0]);
-                    (Controlled cqCNOT)(controls, (xs[0], ys[0]));//will not be uncomputed
+                    (Controlled cqCNOT)(controls, (xs[0], ys[0]));// will not be uncomputed
                     for idx in 1..nQubits - 2 {
                         cqAND(xs[idx], ys[idx], gens[idx]);
                         cqCNOT(xs[idx], ys[idx]);
@@ -1156,7 +1159,7 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
                     if (useCarry){
                         (Controlled cqCCNOTWrapper)(controls, (xs[nQubits - 1], ys[nQubits -1], gens[nQubits - 1]));//will not be uncomputed
                     }
-                    (Controlled cqCNOT)(controls, (xs[nQubits - 1], ys[nQubits -1]));//will not be uncomputed
+                    (Controlled cqCNOT)(controls, (xs[nQubits - 1], ys[nQubits -1]));////will not be uncomputed
 
                     // 2) Compute all carries
                     if (useCarry){
@@ -1190,7 +1193,7 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
 
                             MeasureResetAll_Error(singleControls);
                         }
-                    } else {//without controls
+                    } else {// without controls
                         X_Gate_Error(ys[0]);
                         CNOT_Gate_Error(gens[0], ys[1]);
                         for ids in 1..nQubits - 2 {
@@ -1213,7 +1216,7 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
                         (Adjoint cqAND)(xs[ids], ys[ids], gens[ids]);
                     }
                         
-                    //This final negation had no inverse in step (1)
+                    // This final negation had no inverse in step (1)
                     (Controlled ApplyToEachWrapperCA)(controls, (X_Gate_Error, ys[0..nQubits - 2]));
 
                     MeasureResetAll_Error(ancillaQubits);
@@ -1314,7 +1317,7 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
         body (...){
             let nQubits = Length(xs!);
             if (constant >= 2L^nQubits - 1L){
-                //Since xs <= 2^nQubits -1, in this case the constant
+                // Since xs <= 2^nQubits -1, in this case the constant
                 // must be greater, so we do not clip the carry
             } else {
                 let constantComplement = constant ^^^ 2L^nQubits - 1L;
@@ -1365,7 +1368,7 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
         controlled (controls, ...) {
             let nQubits = Length(xs!);
             if (constant > 2L^nQubits - 1L){
-                //Since xs <= 2^nQubits -1, in this case the constant
+                // Since xs <= 2^nQubits -1, in this case the constant
                 // must be greater, so we fip the carry without any work
                 (Controlled X_Gate_Error)(controls, (carry));
             } else {
@@ -1424,7 +1427,7 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
         cqCNOT : (('T, Qubit_Error) => Unit is Ctl + Adj),
         cqCCNOTWrapper : (('T, Qubit_Error, Qubit_Error) => Unit is Ctl + Adj),
         cqAND : (('T, Qubit_Error, Qubit_Error) => Unit is Ctl + Adj),
-        xs : 'T[], //pre-complemented
+        xs : 'T[], // pre-complemented
         ys : Qubit_Error[], 
         carry : Qubit_Error
     ) : Unit {
@@ -1440,7 +1443,7 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
         }
         controlled(controls, ...){
             let nQubits = Length(xs);
-            if (nQubits==1){//edge case
+            if (nQubits==1){// edge case
                 (Controlled cqCCNOTWrapper)(controls, (xs[0], ys[0], carry));
             } else {
                 let logn = Floor(Lg(IntAsDouble(nQubits)));
@@ -1562,14 +1565,14 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
             }
         }
         controlled (controls, ...){
-        //The full adder must uncompute these carries at the end, 
-        //so we save controls by not controlling this operation.
-        //However : When uncomputing, the adder only calls
-        //this operation with nQubits-1. Thus, we must
-        //control the individual operations that use
-        //qubits in the n-1 position.
-        //Hence, each of the "rounds" must check whether the
-        //indices are high enough to need the controls.
+        // The full adder must uncompute these carries at the end, 
+        // so we save controls by not controlling this operation.
+        // However : When uncomputing, the adder only calls
+        // this operation with nQubits-1. Thus, we must
+        // control the individual operations that use
+        // qubits in the n-1 position.
+        // Hence, each of the "rounds" must check whether the
+        // indices are high enough to need the controls.
             let logn = Floor(Lg(IntAsDouble(nQubits)));
             // P rounds
             for idxRound in 1..logn - 1 {
@@ -1622,14 +1625,14 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
             }
         }
         controlled (controls, ...){
-            //The full adder must uncompute these carries at the end, 
-            //so we save controls by not controlling this operation.
-            //However : When uncomputing, the adder only calls
-            //this operation with nQubits-1. Thus, we must
-            //control the individual operations that use
-            //qubits in the n-1 position.
-            //Hence, each of the "rounds" must check whether the
-            //indices are high enough to need the controls.
+            // The full adder must uncompute these carries at the end, 
+            // so we save controls by not controlling this operation.
+            // However : When uncomputing, the adder only calls
+            // this operation with nQubits-1. Thus, we must
+            // control the individual operations that use
+            // qubits in the n-1 position.
+            // Hence, each of the "rounds" must check whether the
+            // indices are high enough to need the controls.
             let logn = Floor(Lg(IntAsDouble(nQubits)));
             for idxRound in 1..logn {
                 let lognmin1 = Floor(Lg(IntAsDouble(nQubits - 1)));
@@ -1686,14 +1689,14 @@ namespace Microsoft.Quantum.Crypto.Error.Arithmetic {
             }
         }
         controlled (controls, ...){
-            //The full adder must uncompute these carries at the end, 
-            //so we save controls by not controlling this operation.
-            //However : When uncomputing, the adder only calls
-            //this operation with nQubits-1. Thus, we must
-            //control the individual operations that use
-            //qubits in the n-1 position.
-            //Hence, each of the "rounds" must check whether the
-            //indices are high enough to need the controls.
+            // The full adder must uncompute these carries at the end, 
+            // so we save controls by not controlling this operation.
+            // However : When uncomputing, the adder only calls
+            // this operation with nQubits-1. Thus, we must
+            // control the individual operations that use
+            // qubits in the n-1 position.
+            // Hence, each of the "rounds" must check whether the
+            // indices are high enough to need the controls.
             let log2nover3 = Floor(Lg(2.0 * IntAsDouble(nQubits) / 3.0));	
             for idxRound in log2nover3..( - 1)..1 {
                 let log2nmin1over3 = Floor(Lg(2.0 * IntAsDouble(nQubits - 1) / 3.0));

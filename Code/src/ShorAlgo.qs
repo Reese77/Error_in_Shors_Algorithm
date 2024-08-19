@@ -12,20 +12,11 @@ namespace Error_In_Shor_Algo {
     open Tools;
 
 
-    /// # summary
-    /// attempts 25 times to find a divisor of n using Shor's Algorithm
-    ///
-    /// # input
-    /// ## n
-    /// the Int we want to factor
-    ///
-    /// # output
-    /// ## Int
-    /// a hopefully non-trivial factor of n
-    ///
-    /// #remarks
-    /// if it can't successfully find a non-trivial factor after 25 attempts, returns 1
-    ///
+    //// BEGINNING OF INT VERSIONS
+    // There are no comments for the int versions since they just convert everything to BigInt, 
+    // call the BigInt version, and convert back before returning
+    // If you want to read the comments, Ctrl + F for the operation/function name but replace I with L
+    
     operation findDivisorI(n : Int) : Int {
 
         let retval = findDivisorL(IntAsBigInt(n));
@@ -34,14 +25,11 @@ namespace Error_In_Shor_Algo {
 
     }
 
-
-
     function findOrderofAModNaiveI(a : Int, mod : Int) : Int {
         let retval = findOrderofAModNaiveL(IntAsBigInt(a), IntAsBigInt(mod));
 
         return BoolArrayAsInt(BigIntAsBoolArray(retval, BitSizeL(retval)));
     }
-
 
     operation findOrderOfAMod_RecycledXRegisterI_Error(a: Int, mod : Int) : Int {
         let retval = findOrderOfAMod_RecycledXRegisterL_Error(IntAsBigInt(a), IntAsBigInt(mod));
@@ -56,24 +44,6 @@ namespace Error_In_Shor_Algo {
         return BoolArrayAsInt(BigIntAsBoolArray(retval, BitSizeL(retval)));
     }
 
-
-    /// # summary
-    /// finds the order of a in the multiplicative group Z/nZ
-    ///
-    /// # input
-    /// ## a
-    /// classical constant a Int
-    ///
-    /// ## mod
-    /// classical constant n Int
-    ///
-    /// # output
-    /// ## Int
-    /// ord(a) in Z/modZ
-    ///
-    /// #remarks
-    /// this is the bulk of Shor's Algo
-    ///
     operation findOrderOfAModI_Error(a : Int, mod : Int) : Int{
 
         let retval = findOrderOfAModL_Error(IntAsBigInt(a), IntAsBigInt(mod));
@@ -88,17 +58,21 @@ namespace Error_In_Shor_Algo {
         return BoolArrayAsInt(BigIntAsBoolArray(retval, BitSizeL(retval)));
         
     }
-
     
     function FindOrderFromQFTI(guess : Int, mod : Int, qftresult : Int, n1 : Int, doubles : Int, epsilon : Int) : Int {
         let retval = FindOrderFromQFTL(IntAsBigInt(guess), IntAsBigInt(mod), IntAsBigInt(qftresult)
                                         , n1, doubles, IntAsBigInt(epsilon));
 
-        return BoolArrayAsInt(BigIntAsBoolArray(retval, BitSizeL(retval)));
-
+        if retval == -1L {
+            return -1;
+        }
+        return BoolArrayAsInt(BigIntAsBoolArray(retval, BitSizeL(AbsL(retval))));
     }
 
     function RemoveEvenMultiplesI(guess : Int, mod : Int, answer : Int) : Int {
+        if answer == -1 {
+            return -1;
+        }
         let retval = RemoveEvenMultiplesL(IntAsBigInt(guess), IntAsBigInt(mod), IntAsBigInt(answer));
 
         return BoolArrayAsInt(BigIntAsBoolArray(retval, BitSizeL(retval)));
@@ -113,7 +87,6 @@ namespace Error_In_Shor_Algo {
         }
         return ret;
     }
-
 
     function ConvergentsI(continuedFraction : Int[]) : (Int, Int)[] {
         mutable input :BigInt[]= [];
@@ -130,12 +103,14 @@ namespace Error_In_Shor_Algo {
         return ret;
     }
 
+    //// BEGINNING OF BIGINT VERSIONS
+
     /// # summary
     /// attempts 25 times to find a divisor of n using Shor's Algorithm
     ///
     /// # input
-    /// ## n
-    /// the BigInt we want to factor
+    /// ## n BigInt
+    /// the number we want to factor
     ///
     /// # output
     /// ## BigInt
@@ -146,9 +121,8 @@ namespace Error_In_Shor_Algo {
     ///
     operation findDivisorL(n : BigInt) : BigInt {
 
-        mutable attempts = 0;
-        while attempts < 25 {
-            set attempts += 1;
+        for i in 1..25 {
+            
             //generate random guess
             //because n is huge, chances of picking the same guess are astronomically tiny
             let guess = GenerateRandomNumberInRangeL(n);
@@ -161,9 +135,9 @@ namespace Error_In_Shor_Algo {
 
             //else, find order mod N
             //maybe I should do the precomputation here
-            let m = findOrderOfAMod_RecycledXRegisterL_Error(guess, n);
-            let almostOrder = FindOrderFromQFTL(guess, n, m, 2 * BitSizeL(n), 4, 0L);
-            let order = RemoveEvenMultiplesL(guess, n, almostOrder);
+            let m = findOrderOfAMod_RecycledXRegisterL(guess, n);
+            let orderCandidate = FindOrderFromQFTL(guess, n, m, 2 * BitSizeL(n), 4, 0L);
+            let order = RemoveEvenMultiplesL(guess, n, orderCandidate);
 
             //if order is odd, continue to top of loop
             if order % 2L == 0L {
@@ -183,8 +157,6 @@ namespace Error_In_Shor_Algo {
                     if gcd2 != 1L {
                         return gcd2;
                     }
-
-                    
                 }
             }
         }
@@ -193,7 +165,19 @@ namespace Error_In_Shor_Algo {
     }
 
 
-
+    /// # Description
+    /// finds the order of (a) with modulus mod by repeated multiplication (SLOW)
+    ///
+    /// # Inputs
+    /// ## a BigInt
+    /// number we want to find order of
+    ///
+    /// ## mod BigInt
+    /// the modulus we are working with
+    ///
+    /// # Output
+    /// ## BigInt
+    ///
     function findOrderofAModNaiveL(a : BigInt, mod : BigInt) : BigInt {
         mutable cur = a;
         mutable counter = 1L;
@@ -204,7 +188,27 @@ namespace Error_In_Shor_Algo {
         return counter;
     }
 
-
+    /// # Description
+    /// does the quantum part of Shor's Algorithm, returns the measured value after performing QFT
+    ///
+    /// # Inputs
+    /// ## a BigInt
+    /// the number you want to find the order of
+    ///
+    /// ## mod Big Int
+    /// the modulus you're working in
+    ///
+    /// # Output
+    /// ## BigInt
+    ///
+    /// #Remarks 
+    /// recycles the same single qubit for the entire x register by shifting around the circuit diagram
+    /// so all operation involving xi are completed before x(i-1), except for controlling rotations
+    /// we use the measured value of xi in a classical if statement to "control" these rotations
+    ///
+    /// Uses Qubit_Error to simulate errors, you can control probability by editting get_X_Prob in Basics_Error.qs
+    ///
+    ///you would input this result into FindOrderFromQFT to find the order with high probability
     operation findOrderOfAMod_RecycledXRegisterL_Error(a: BigInt, mod : BigInt) : BigInt {
 
         //n2 is for the y register which is a^x mod N which means it needs enough bits to store up to N-1
@@ -213,12 +217,13 @@ namespace Error_In_Shor_Algo {
         //and since we need to find a period, we need at least N cycles of up to N-1 length
         //meaning we need to store up to N^2 which uses twice as many bits as N
         let n1 = n2 * 2;
-        //this is an array for a^(2^i) so allow us to split the exponentiation BigInto multiplication
+        //this is an array for a^(2^i) so allow us to split the exponentiation into multiplication
         mutable precomputed = [0L, size = n1];
 
         //since we are BigIntermingling the multiplication and QFT inverse, we can reuse the x qubit for each bit
         use x = Qubit();
         mutable x_error = Qubit_Error(x, get_X_Prob());
+
         use y = Qubit[n2];
         mutable y_arr = [Qubit_Error(x, get_Y_Prob()), size = n2];
         for i in 0 .. n2-1 {
@@ -228,48 +233,70 @@ namespace Error_In_Shor_Algo {
 
 
         //doing the precomputation for a^(2^i)
-        //I guess this could be passed as a parameter since n is fixed 
+        //I guess this could be passed as a parameter since a and mod are fixed 
         for i in 0 .. n1-1 {
             set precomputed w/= i <- modularExponentiationL(a, ExponentL(2L, IntAsBigInt(i)), mod);
         }
 
-        //storing the measured values of each "bit" in the x register
+        //for storing the measured values of each "bit" in the x register
         mutable measuredXReg = [Zero, size = n1];
 
-        //setting y register equal to anything non-zero because it doesn't matter
+        //setting y register equal 1
+        // the periodicity is what matters so we should theoretically be able to set y to anything
+        // nonzero but I haven't extensively tested this hypothesis
         X_Gate_Error(y_error![0]);
         
 
-        //BigInterweaving multiplying the y register with qft
-        for i in 0 .. n1 - 1 {
+        //interweaving multiplying the y register with qft
+        for i in n1-1 ..-1.. 0 {
+            // in the non-recycled version, H is applied to whole x register to create superposition of all numbers
             H_Gate_Error(x_error);
 
-            Controlled ModularMulByConstantConstantModulusInPlace_Error([x],(mod, precomputed[n1-1 - i], y_error));
+            Controlled ModularMulByConstantConstantModulusInPlace_Error([x],(mod, precomputed[i], y_error));
 
+            //QFT part
             //do any necessary rotations
-            mutable j = 0;
-            while j < i {
-                if measuredXReg[n1-1 - j] == One {
+            for j in n1-1 ..-1.. i+1 {
+                if measuredXReg[j] == One {
                     
-                    R1Frac_Gate_Error(1, i - j, x_error);
+                    R1Frac_Gate_Error(1, j-i, x_error);
                 }
 
-                set j += 1;
             }
 
             H_Gate_Error(x_error);
 
-            set measuredXReg w/= (n1-1 - i) <- M_Gate_Error(x_error);
+            //storing measured values for classical controlling and final result
+            set measuredXReg w/= (i) <- M_Gate_Error(x_error);
 
+            // xi qubit is being recycled for x(i-1)
             Reset_Error(x_error);
         }
         ResetAll_Error(y_error!);
 
-        return ResultBigEndiantoBigInt(measuredXReg);
-
-        
+        return ResultLittleEndiantoBigInt(measuredXReg);
     }
 
+
+    /// # Description
+    /// does the quantum part of Shor's Algorithm, returns the measured value after performing QFT
+    ///
+    /// # Inputs
+    /// ## a BigInt
+    /// the number you want to find the order of
+    ///
+    /// ## mod Big Int
+    /// the modulus you're working in
+    ///
+    /// # Output
+    /// ## BigInt
+    ///
+    /// #Remarks 
+    /// recycles the same single qubit for the entire x register by shifting around the circuit diagram
+    /// so all operation involving xi are completed before x(i-1), except for controlling rotations
+    /// we use the measured value of xi in a classical if statement to "control" these rotations
+    ///
+    ///you would input this result into FindOrderFromQFT to find the order with high probability
     operation findOrderOfAMod_RecycledXRegisterL(a: BigInt, mod : BigInt) : BigInt {
 
         //n2 is for the y register which is a^x mod N which means it needs enough bits to store up to N-1
@@ -278,7 +305,7 @@ namespace Error_In_Shor_Algo {
         //and since we need to find a period, we need at least N cycles of up to N-1 length
         //meaning we need to store up to N^2 which uses twice as many bits as N
         let n1 = n2 * 2;
-        //this is an array for a^(2^i) so allow us to split the exponentiation BigInto multiplication
+        //this is an array for a^(2^i) so allow us to split the exponentiation into multiplication
         mutable precomputed = [0L, size = n1];
 
         //since we are BigIntermingling the multiplication and QFT inverse, we can reuse the x qubit for each bit
@@ -300,37 +327,36 @@ namespace Error_In_Shor_Algo {
 
         //setting y register equal to anything non-zero because it doesn't matter
         X(y[0]);
-        Message("Set y=1");
 
-        //BigInterweaving multiplying the y register with qft
-        for i in 0 .. n1 - 1 {
-            Message($"H({n1-1 - i})");
+        //interweaving multiplying the y register with qft
+        for i in n1-1 ..-1.. 0 {
+            // Message($"H({i})");
+            // in the non-recycled version, H is applied to whole x register to create superposition of all numbers
             H(x);
 
-            Message($"Multiplication ");
-            Message($"control: x{n1-1 - i}");
-            Message($"precomputed: {n1-1 - i}");
-            Message("");
-            Controlled ModularMulByConstantConstantModulusInPlace([x],(mod, precomputed[n1-1 - i], y_le));
+            // Message($"Multiplication ");
+            // Message($"control: x{i}");
+            // Message($"precomputed: {i}");
+            // Message("");
+            Controlled ModularMulByConstantConstantModulusInPlace([x],(mod, precomputed[i], y_le));
 
+            //starting QFT part
             //do any necessary rotations
-            mutable j = 0;
-            while j < i {
-                Message($"Rotation by {i-j}");
-                Message($"Control: x{n1-1 - j}");
-                Message($"Target x{n1-1 - i}");
-                Message("");
-                if measuredXReg[n1-1 - j] == One {
+            for j in n1-1 ..-1.. i+1 {
+                // Message($"Rotation by {j-i}");
+                // Message($"Control: x{j}");
+                // Message($"Target x{i}");
+                // Message("");
+                if measuredXReg[j] == One {
                     
-                    R1Frac(1, i - j, x);
+                    R1Frac(1, j - i, x);
                 }
 
-                set j += 1;
             }
-            Message($"H({n1-1 - i})");
+            // Message($"H({i})");
             H(x);
 
-            set measuredXReg w/= (n1-1 - i) <- M(x);
+            set measuredXReg w/= (i) <- M(x);
 
             Reset(x);
         }
@@ -343,22 +369,22 @@ namespace Error_In_Shor_Algo {
 
 
     /// # summary
-    /// finds the order of a in the multiplicative group Z/nZ
+    /// does the quantum part of Shor's Algorithm, returns the measured value after performing QFT
+    /// 
     ///
     /// # input
-    /// ## a
-    /// classical constant a BigInt
+    /// ## a BigInt
+    /// classical constant a 
     ///
-    /// ## mod
-    /// classical constant n BigInt
+    /// ## mod BigInt
+    /// classical constant n 
     ///
     /// # output
     /// ## BigInt
-    /// ord(a) in Z/modZ
     ///
     /// #remarks
-    /// this is the bulk of Shor's Algo
-    ///
+    /// this is the bulk of Shor's Algo, the entire quantum part
+    /// you would input this result into FindOrderFromQFT to find the order with high probability
     operation findOrderOfAModL(a : BigInt, mod : BigInt) : BigInt{
 
         //n2 is for the y register which is a^x mod N which means it needs enough bits to store up to N-1
@@ -370,16 +396,11 @@ namespace Error_In_Shor_Algo {
         //this is an array for a^(2^i) so allow us to split the exponentiation BigInto multiplication
         mutable precomputed = [0L, size = n1];
 
-    
-
         use x = Qubit[n1];
-
 
         use y = Qubit[n2];
         
         mutable y_le = LittleEndian(y);
-
-
 
         //doing the precomputation for a^(2^i)
         //I guess this could be passed as a parameter since n is fixed 
@@ -397,13 +418,11 @@ namespace Error_In_Shor_Algo {
 
         //incrementally multiplying y by a^(2^i) mod N, controlled by whether x[i] is 0 or 1
         for i in 0 .. n1-1 {
-            
 
             Controlled ModularMulByConstantConstantModulusInPlace([x[i]],(mod, precomputed[i], y_le));
         }
 
         let yreg = QubitLittleEndianToBigInt(y);
-   
 
         ResetAll(y);
 
@@ -416,10 +435,29 @@ namespace Error_In_Shor_Algo {
 
         ResetAll(x);
 
-        //extracting period length
         return xreg;
-        
     }
+
+
+    /// # summary
+    /// does the quantum part of Shor's Algorithm, returns the measured value after performing QFT
+    /// 
+    ///
+    /// # input
+    /// ## a BigInt
+    /// classical constant a 
+    ///
+    /// ## mod BigInt
+    /// classical constant n 
+    ///
+    /// # output
+    /// ## BigInt
+    ///
+    /// #remarks
+    /// this is the bulk of Shor's Algo, the entire quantum part
+    /// you would input this result into FindOrderFromQFT to find the order with high probability
+    ///
+    /// Uses Qubit_Error to simulate errors, you can control probability by editting get_X_Prob in Basics_Error.qs
 
     operation findOrderOfAModL_Error(a : BigInt, mod : BigInt) : BigInt{
 
@@ -455,30 +493,26 @@ namespace Error_In_Shor_Algo {
                     set y_arr w/= i <- Qubit_Error(y[i], get_Y_Prob());
                 }
                 mutable y_error = LittleEndian_Error(y_arr);
-
                 
                 //setting x register to be a unformly random superposition of all numbers 0 to N^2
                 for i in 0 .. n1-1 {
                     H_Gate_Error(x_arr[i]);
-                    Message($"H({i})");
+                    // Message($"H({i})");
                 }
-
                 
                 //setting y register equal to 1
                 X_Gate_Error(y_arr[0]);
 
-                Message("y=1\n");
+                // Message("y=1\n");
 
                 //incrementally multiplying y by a^(2^i) mod N, controlled by whether x[i] is 0 or 1
                 for i in n1-1 ..-1.. 0 {
-                    Message($"Multiplication ");
-                    Message($"control: x{i}");
-                    Message($"precomputed: {i}");
-                    Message("");
+                    // Message($"Multiplication ");
+                    // Message($"control: x{i}");
+                    // Message($"precomputed: {i}");
+                    // Message("");
                     Controlled ModularMulByConstantConstantModulusInPlace_Error([x[i]],(mod, precomputed[i], y_error));
                 }
-
-                
 
                 let yreg = QubitLittleEndianErrorToInt(y_arr);
 
@@ -497,15 +531,44 @@ namespace Error_In_Shor_Algo {
             set xreg = QubitLittleEndianErrorToBigInt(x_arr);
 
             ResetAll(x);
-
         }
-
-        //extracting period length
         return xreg;
-        
     }
 
-    
+    /// # Description
+    /// given the measured value after QFT, apply post-processing to extract a multiple of the order
+    ///
+    /// # Inputs
+    /// ## guess BigInt
+    /// the number we want to find order of
+    ///
+    /// ## mod BigInt
+    /// the modulus we are working in
+    ///
+    /// ## qftresult BigInt
+    /// the measured value from findOrderofAMod(add-ons)
+    ///
+    /// ## n1 Int
+    /// the number of qubits in x register
+    ///
+    /// ## doubles Int
+    /// the largest multiple of the denominator you want to check
+    /// if we're looking for 4 and qftres = 2, 2/4 is going to show up as 1/2 and we will miss 4
+    /// to prevent this, you can set doubles equal to 2
+    /// I always set doubles equal to 4 so it checks den, 2den, and 4den
+    ///
+    /// ## epsilon BigInt
+    /// how much plus or minus from each denominator we want to check
+    /// if order is 30 and the fraction expansion contains 4/29, we were so close
+    /// we might potentially want to search in the immediate vicinity of every denominator
+    ///
+    /// # Output
+    /// ## BigInt
+    /// returns -1L if it couldn't find a valid order
+    ///
+    /// #Remarks
+    /// will only return a positive value if guess^value = 1 mod 
+    /// but value could actually be a integer multiple of the true order
     function FindOrderFromQFTL(guess : BigInt, mod : BigInt, qftresult : BigInt, n1 : Int, doubles : Int, epsilon : BigInt) : BigInt {
         let Q = 2L^n1;
 
@@ -539,6 +602,27 @@ namespace Error_In_Shor_Algo {
 
     }
 
+    /// # Description
+    /// given an integer multiple of the candidate, attempts to reduce it
+    /// if answer is even, it checks if answer/2 is also an order candidate
+    /// continues until newAnswer/2 no longer satisfies guess^newAnswer = 1 mod
+    ///
+    /// # Inputs
+    /// ## guess BigInt
+    /// the number we want to find order of
+    ///
+    /// ## mod BigInt
+    /// the modulus we are working in
+    ///
+    /// ## answer BigInt
+    /// a number that satisfies guess^answer = 1 mod, 
+    /// basically an integer multiple of the order
+    ///
+    /// # Output
+    /// ## BigInt
+    ///
+    /// #Remarks
+    /// 
     function RemoveEvenMultiplesL(guess : BigInt, mod : BigInt, answer : BigInt) : BigInt {
         mutable candidate = answer;
 
@@ -548,6 +632,17 @@ namespace Error_In_Shor_Algo {
         return candidate;
     }
 
+    /// # Description
+    /// computes the list of coefficients in continued fraction expansion of num/den
+    ///
+    /// # Inputs
+    /// ## numerator BigInt
+    ///
+    /// ## denominator BigInt
+    ///
+    /// # Output
+    /// ## BigInt[]
+    ///
     function ContinuedFractionExpansionL(numerator : BigInt, denominator : BigInt) : BigInt[] {
         mutable result = [];
         mutable a = numerator;
@@ -565,7 +660,19 @@ namespace Error_In_Shor_Algo {
         return result;
     }
 
-
+    /// # Description
+    /// given an array of continued fraction coefficients, 
+    /// returns a sequence of fractions representing the convergents of the continued frac expansion
+    ///
+    /// # Inputs
+    /// ## continuedFraction BigInt[]
+    /// the coefficients of the continued fraction expansion
+    ///
+    /// # Output
+    /// ## (BigInt, BigInt)[]
+    /// each tuple in the array represents a fraction
+    /// the tuple (num, den) represents the fraction num/den
+    ///
     function ConvergentsL(continuedFraction : BigInt[]) : (BigInt, BigInt)[] {
         mutable convergentsList = [];
         mutable prevNumerator = 1L;

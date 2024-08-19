@@ -16,68 +16,66 @@ namespace MyQuantumProgram {
 
 
     @EntryPoint()
-    
-    operation Main() : Bool {
-
-        //TODO in the whole library, in every controlled block, run a loop through all controls to cause error with getCTLprob
-        let p = 5;
-        let q = 3;
-        let len = 1;
+    operation Main() :  (Int, Bool) {
+        //variables for setup
+        //2 safe primes and their product
+        let p = 23;
+        let q = 47;
         let mod = p * q;
-
-        mutable qftresults = [0L, size = len];
-        mutable orderresults = [0L, size = len];
+        //number we want to find order of
         let guess = 2;
 
+        //classically find order for debugging purposes
         let order = findOrderofAModNaiveI(guess, mod);
         let possibleApproximates = listOfIntegerOverOrder(order);
-
-        // use z = Qubit[6];
-        // ApplyXorInPlaceL(35L, z);
-        // //DumpMachine();
         
 
+        let len = 200;
+        // OPTION 1: Works similar to histogram repeating len times. 
+        // Either return Int[] or (Int[], Int[])
+        // First is just the integer you measure immediately after QFT
+        // Second is first and whatever order candidate you get when applying fraction expansion to qft result
 
+        // mutable qftresults = [0, size = len];
+        // mutable orderresults = [0, size = len];
         // for i in 0 .. len-1 {
         //     Message($"{i}");
-        //     set qftresults w/= i <-findOrderOfAMod_RecycledXRegister_Error(guess, mod);
-        //     set orderresults w/= i <- RemoveEvenMultiples(guess, mod, FindOrderFromQFT(guess, mod, qftresults[i], 2 * BitSizeL(mod), 4, 0L));
+        //     set qftresults w/= i <-findOrderOfAMod_RecycledXRegisterI(guess, mod);
+        //     // set orderresults w/= i <- RemoveEvenMultiplesI(guess, mod, FindOrderFromQFTI(guess, mod, qftresults[i], 2 * BitSizeL(mod), 4, 0L));
         // }
+        // return qftresults;
 
-
+        //
         let qftres = findOrderOfAMod_RecycledXRegisterI(guess, mod);
 
-        //return qftres;
-
+        //compute list of fractions that are approximates of qftres/2^n
         let continuedFraction = ContinuedFractionExpansionI(qftres, 2^(2 * BitSizeI(mod)));
         let convergents = ConvergentsI(continuedFraction);
 
+        //Some important information for debugging and seeing what the algo did
         Message($"{qftres}/{2^(2 * BitSizeI(mod))}");
         Message($"1/{order}^2");
         Message($"{convergents}");
         Message($"{closestDistance(possibleApproximates, IntAsDouble(qftres) / IntAsDouble(2^(2 * BitSizeI(mod)) - 1))}");
+        Message("");
+
+        //OPTION 2: Bool of if it should be found since qft/2^n1 < 1/den^2
+        // You could also just return a if you want
+        let (a, b) = closestDistance(possibleApproximates, IntAsDouble(qftres) / IntAsDouble(2^(2 * BitSizeI(mod))));
+        //return a < 1.0 / IntAsDouble(order^2);
 
 
-        //OPTION 1: Bool of if it should be found since qft/2^n1 < 1/den^2
-        let (a, b) = closestDistance(possibleApproximates, IntAsDouble(qftres) / IntAsDouble(2^(2 * BitSizeI(mod)) - 1));
-        return a < 1.0 / IntAsDouble(order^2);
-
-
-        //OPTION 2: Int returning order
+        //OPTION 3: Int returning order candidate
         let ordres = RemoveEvenMultiplesI(guess, mod, FindOrderFromQFTI(guess, mod, qftres, 2 * BitSizeI(mod), 4, 0));
         
-        // if ordres == -1 {
-        //     return -qftres;
-        // }
-        // return ordres;
+        //if we don't get an order, it's nice to know what the qftres was 
+        if ordres == -1 {
+            return (-ordres, a < 1.0 / IntAsDouble(order^2));
+        }
+        return (ordres, a < 1.0 / IntAsDouble(order^2));
         
 
-        //OPTION 3: (Int, Int) returning order and qft to check
+        //OPTION 4: (Int, Int) returning order and qft to check
         // return (ordres, qftres);
-
-
-
-
-        
     }
 }

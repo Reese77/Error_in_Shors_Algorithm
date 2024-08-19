@@ -8,15 +8,20 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
     open Microsoft.Quantum.Random;
     open QIR.Intrinsic;
 
-    ///IMPORTANT all comments starting with 3 slashes were copied over from original and may need to be edited
+    ////IMPORTANT comments starting with /// were copied over and may not be accurate
+    //// some comments within operation that start with //{space}{stuff} are probably also copied over
+    //// they were segments of code commented out via Ctrl+K+C, or single line explainatory comments
 
-    //ProbX is an Int between 0-1 000 000 denoting the probability that X gate is applied after every gate
-    //ProbZ is an Int between 0-1 000 000 denoting probability that Z gate is applied after every gate
+
+    //Prob is an array of Int between 0-1 000 000 denoting the probability,
+    //  that some type of error occurs before applying the intended gate
+    //  Note: read ThingsToNote.md part 6
     newtype Qubit_Error = (qubit : Qubit, ProbError : Int[]);
 
     newtype LittleEndian_Error = (Data : Qubit_Error[]);
 
-    ////functions to get error probability arrays
+    //// SECTION 1: Probability
+    //// functions to get error probability arrays
 
     function get_X_Prob() : Int[] {
         return [0, 0];
@@ -38,60 +43,18 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         return [0, 0];
     }
 
-    ////operations to create or convert things TODO reword this comment
 
-    //
-    function wrapAncillaErrorArray(q_arr : Qubit[], probs : Int[]) : Qubit_Error[] {
-        
-        mutable ret_val = [Qubit_Error(q_arr[0], probs), size = Length(q_arr)];
+    /// # Description
+    /// wrapper to get around compiler being mad at non-reversibility
+    ///
+    /// # Inputs
+    /// ## q
+    /// qubit you want to cause errors to
+    ///
+    /// ## prob_error
+    /// array of probabilities for each type of error
 
-        for i in 0 .. Length(q_arr) - 1 {
-            set ret_val w/= i <- Qubit_Error(q_arr[i], probs );
-        }
-        return ret_val;
-    }
-
-    function wrapAncillaError(q : Qubit, probs : Int[]) : Qubit_Error {
-        return Qubit_Error(q, probs);
-    }
-
-    function convertQubitErrorToQubit(qe : Qubit_Error) : Qubit {
-        let (q, e) = qe!;
-        return q;
-    }
-
-    function convertQubitToQubitError(q : Qubit, probs : Int[]) : Qubit_Error {
-        return Qubit_Error(q, probs);
-    }
-
-    function convertQubitArrayToQubitErrorArray(qubit_arr : Qubit[], probs : Int[]) : Qubit_Error[] {
-        if Length(qubit_arr) == 0 {
-            return [];
-        }
-        mutable ret_val = [Qubit_Error(qubit_arr[0], probs), size = Length(qubit_arr)];
-        
-        for i in 0 .. Length(qubit_arr) - 1 {
-            set ret_val w/= i <- Qubit_Error(qubit_arr[i], probs);
-        }
-        return ret_val;
-    }
-
-    function convertQubitErrorArrayToQubitArray(qe_arr : Qubit_Error[]) : Qubit[] {
-        if Length(qe_arr) == 0 {
-            return [];
-        }
-        let (a, b) = qe_arr[0]!;
-        mutable ret_val = [a, size = Length(qe_arr)];
-
-        for i in 0 .. Length(qe_arr) - 1 {
-            let (q, p) = qe_arr[i]!;
-            set ret_val w/= i <- q;
-        }
-        return ret_val;
-
-    }
-
-    operation causeError(q: Qubit, prob_error: Int[]) : Unit is Adj{
+    operation causeError(q: Qubit, prob_error: Int[]) : Unit is Adj + Ctl{
         body(...){
             _causeError(q,prob_error);
         }
@@ -113,10 +76,18 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         }
     }
 
-    //operation to cause errors before ErrorWrapped gates
-    //prob_error is currently of length 2 for X and Z errors
-    //if you want to cause different types of errors, add more if statements after and
-    //change the get_(insert_type)_Prob() functions to give an Int[] of the appropriate length
+    /// # Description
+    /// generates random number to apply some error, possibly applying multiple errors
+    ///
+    /// # Inputs
+    /// ## q
+    /// qubit you want to cause errors to
+    ///
+    /// ## prob_error
+    /// array of probabilities for each type of error
+    ///
+    /// # Remarks
+    /// Read ThingsToNote.md Section 6 for how to change
     operation _causeError(q : Qubit, prob_error : Int[]) : Unit{
         mutable random_num = DrawRandomInt(0, 1000000);
 
@@ -132,9 +103,136 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         }
     }
 
-    ////basic gates that operate directly on Qubit_Errors
+    //// SECTION 2: WRAPPERS AND CONVERTERS
+    //// functions that convert between data types or wrap qubits with prob arrays
 
+    /// # Description
+    /// takes array of qubit and one int array of probabilities,
+    /// and returns array of Qubit_Errors where each qubit has probs as the probability of error array
+    ///
+    /// # Inputs
+    /// ## q_arr
+    /// qubits you want to wrap
+    ///
+    /// ## probs
+    /// probability array you want each qubit to have
+    ///
+    /// # Output
+    /// ## Qubit_Error[]
+    function wrapAncillaErrorArray(q_arr : Qubit[], probs : Int[]) : Qubit_Error[] {
+        
+        mutable ret_val = [Qubit_Error(q_arr[0], probs), size = Length(q_arr)];
 
+        for i in 0 .. Length(q_arr) - 1 {
+            set ret_val w/= i <- Qubit_Error(q_arr[i], probs );
+        }
+        return ret_val;
+    }
+
+    /// # Description
+    /// takes qubit and one int array of probabilities,
+    /// and returns a Qubit_Error with probs as the probability of error array
+    ///
+    /// # Inputs
+    /// ## q
+    /// qubit you want to wrap
+    ///
+    /// ## probs
+    /// probability array you want the qubit to have
+    ///
+    /// # Output
+    /// ## Qubit_Error
+    function wrapAncillaError(q : Qubit, probs : Int[]) : Qubit_Error {
+        return Qubit_Error(q, probs);
+    }
+
+    /// # Description
+    /// given a Qubit_Error, returns just the qubit part
+    ///
+    /// # Inputs
+    /// ## qe
+    /// qubit_Error you want to unwrap
+    ///
+    /// # Output
+    /// ## Qubit
+    function convertQubitErrorToQubit(qe : Qubit_Error) : Qubit {
+        let (q, e) = qe!;
+        return q;
+    }
+
+    /// # Description
+    /// basically the same as wrapAncillaError
+    /// return tuple (q, probs)
+    ///
+    /// # Inputs
+    /// ## q
+    /// qubit you want to wrap
+    ///
+    /// ## probs
+    /// probability array you want the qubit to have
+    ///
+    /// # Output
+    /// ## Qubit_Error
+    function convertQubitToQubitError(q : Qubit, probs : Int[]) : Qubit_Error {
+        return Qubit_Error(q, probs);
+    }
+
+    /// # Description
+    /// basically the same as wrapAncillaErrorArray
+    /// return array of tuples (qubit_arr[i], probs)
+    ///
+    /// # Inputs
+    /// ## qubit_arr
+    /// qubits you want to wrap
+    ///
+    /// ## probs
+    /// probability array you want each qubit to have
+    ///
+    /// # Output
+    /// ## Qubit_Error[]
+    function convertQubitArrayToQubitErrorArray(qubit_arr : Qubit[], probs : Int[]) : Qubit_Error[] {
+        if Length(qubit_arr) == 0 {
+            return [];
+        }
+        mutable ret_val = [Qubit_Error(qubit_arr[0], probs), size = Length(qubit_arr)];
+        
+        for i in 0 .. Length(qubit_arr) - 1 {
+            set ret_val w/= i <- Qubit_Error(qubit_arr[i], probs);
+        }
+        return ret_val;
+    }
+
+    /// # Description
+    /// given array of Qubit_Error, return just the qubit parts
+    ///
+    /// # Inputs
+    /// ## qe_arr
+    /// qubits you want to unwrap
+    ///
+    /// # Output
+    /// ## Qubit[]
+    function convertQubitErrorArrayToQubitArray(qe_arr : Qubit_Error[]) : Qubit[] {
+        if Length(qe_arr) == 0 {
+            return [];
+        }
+        let (a, b) = qe_arr[0]!;
+        mutable ret_val = [a, size = Length(qe_arr)];
+
+        for i in 0 .. Length(qe_arr) - 1 {
+            let (q, p) = qe_arr[i]!;
+            set ret_val w/= i <- q;
+        }
+        return ret_val;
+
+    }
+
+    
+
+    //// SECTION 3: GATES 
+    //// basic gates that operate directly on Qubit_Errors
+
+    //Same type of comment for all of these,
+    // unwrap Qubit_Error, causeError, apply intended gate
     operation X_Gate_Error(qe : Qubit_Error) : Unit is Adj + Ctl{
         let (qubit, prob_error) = qe!;
 
@@ -212,12 +310,23 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         //intended gate
         T(qubit);
     }
+    
+    //This isn't quite a basic gate so I used the equivalency in the link below
+    //https://learn.microsoft.com/en-us/qsharp/api/qsharp-lang/microsoft.quantum.intrinsic/swap
+    operation SWAP_Gate_Error(q1 : Qubit_Error, q2 : Qubit_Error) : Unit is Adj + Ctl {
+        CNOT_Gate_Error(q1, q2);
+        CNOT_Gate_Error(q2, q1);
+        CNOT_Gate_Error(q1, q2);
+    }
 
-
+    //This isn't quite a basic gate so I used the equivalency in the link below
+    //https://learn.microsoft.com/en-us/qsharp/api/qsharp-lang/microsoft.quantum.intrinsic/rfrac
     operation RFrac_Gate_Error(pauli : Pauli, numerator : Int, power : Int, qubit : Qubit_Error) : Unit is Adj + Ctl{
         R_Gate_Error(pauli, -PI() * IntAsDouble(numerator) / IntAsDouble(2 ^ (power - 1)), qubit);
     }
 
+    //This isn't quite a basic gate so I used the equivalency in the link below
+    //https://learn.microsoft.com/en-us/qsharp/api/qsharp-lang/microsoft.quantum.intrinsic/r1frac
     operation R1Frac_Gate_Error(numerator : Int, power : Int, qubit : Qubit_Error) : Unit is Adj + Ctl{
         RFrac_Gate_Error(PauliZ, -numerator, power + 1, qubit);
         RFrac_Gate_Error(PauliI, numerator, power + 1, qubit);
@@ -226,6 +335,15 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
 
     
 
+    
+    /// # Description
+    /// Resets Qubit_Error by measuring it and applying X gate if it is a One
+    ///
+    /// # Inputs
+    /// ## qubit
+    ///
+    /// #Remarks
+    /// Measures qubit_error and puts it in |0> ready to be deallocated
     operation MeasureReset_Error(qubit : Qubit_Error) : Unit is Adj + Ctl {
         body(...) {
             let (q, e) = qubit!;
@@ -245,23 +363,39 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         }
     }
 
-    operation MeasureResetAll_Error(le : Qubit_Error[]) : Unit is Adj + Ctl {
+    /// # Description
+    /// Resets all Qubit_Errors by measuring them and applying X gate if it is a One
+    ///
+    /// # Inputs
+    /// ## qe_arr
+    ///
+    /// #Remarks
+    /// Measures qubit_errors and puts it in |0> ready to be deallocated
+    operation MeasureResetAll_Error(qe_arr : Qubit_Error[]) : Unit is Adj + Ctl {
         body (...){
-            for q in le {
+            for q in qe_arr {
                 MeasureReset_Error(q);
             }
         }
         controlled (controls, ...){
-            MeasureResetAll_Error(le);
+            MeasureResetAll_Error(qe_arr);
         }
         adjoint (...) {
-            MeasureResetAll_Error(le);
+            MeasureResetAll_Error(qe_arr);
         }
         controlled adjoint (controls, ...){
-            MeasureResetAll_Error(le);
+            MeasureResetAll_Error(qe_arr);
         }
     }
     
+    /// # Description
+    /// Resets Qubit_Error by calling Reset
+    ///
+    /// # Inputs
+    /// ## qubit
+    ///
+    /// #Remarks
+    /// Resets qubit_error and puts it in |0> ready to be deallocated
     operation Reset_Error(qubit : Qubit_Error) : Unit {
         body(...) {
             let (q, e) = qubit!;
@@ -279,33 +413,40 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         
     }
 
-    operation ResetAll_Error(le : Qubit_Error[]) : Unit is Adj + Ctl{
+    /// # Description
+    /// Resets all Qubit_Errors by calling Reset
+    ///
+    /// # Inputs
+    /// ## qe_arr
+    ///
+    /// #Remarks
+    /// Resets qubit_errors and puts it in |0> ready to be deallocated
+    operation ResetAll_Error(qe_arr : Qubit_Error[]) : Unit is Adj + Ctl{
         body (...){
-            for q in le {
+            for q in qe_arr {
                 Reset_Error(q);
             }
         }
         controlled (controls, ...){
-            ResetAll_Error(le);
+            ResetAll_Error(qe_arr);
         }
         adjoint (...) {
-            ResetAll_Error(le);
+            ResetAll_Error(qe_arr);
         }
         controlled adjoint (controls, ...){
-            ResetAll_Error(le);
+            ResetAll_Error(qe_arr);
         }
         
     }
 
-    operation SWAP_Gate_Error(q1 : Qubit_Error, q2 : Qubit_Error) : Unit is Adj + Ctl {
-        CNOT_Gate_Error(q1, q2);
-        CNOT_Gate_Error(q2, q1);
-        CNOT_Gate_Error(q1, q2);
-    }
+    
 
  
 
-    //necessary functions copied from MicrosoftQuantumCrypto library
+    //// SECTION 4: BASICS.qs
+    //// operations copied from Basics.qs
+
+    //// necessary functions copied from MicrosoftQuantumCrypto library
 
     function IsTestable () : Bool {
         return true;
@@ -323,6 +464,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         return false;
 	}
 
+    //// Quantum operations coppied from MicrosoftQuantumCrypto Basics.qs
 
     // some changes due to ancilla
     /// # Summary
@@ -778,7 +920,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
             SwapReverseRegister_Error(xs);
         }
         controlled (controls, ...){
-            if (IsMinimizeWidthCostMetric()) { //don't fanout with low width
+            if (IsMinimizeWidthCostMetric()) { // don't fanout with low width
                 (Controlled SwapReverseRegister_Error)(controls, (xs));
             } else {
                 let nQubits = Length(xs);
@@ -984,7 +1126,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
         body (...){
             let nQubits = Length(controlQubits);
             if (nQubits == 0){
-                //do nothing
+                // do nothing
             } elif (nQubits == 1){
                 CNOT_Gate_Error(controlQubits[0], output);
             } elif (nQubits == 2){
@@ -1090,8 +1232,12 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
     }
 
 
+    //// SECTION 5: STANDARD LIBRARY
+    //// Qubit_Error versions of operations from standard libraries
+    //// I will add links to Github repo with the originals
 
     //From Microsoft.Quantum.Canon
+    //https://github.com/microsoft/qsharp/blob/d1fb2a164a3ec4db73506beda3a70e097ddaacc9/library/std/src/canon.qs#L572
     operation ApplyXorInPlaceL_Error(value : BigInt, target : Qubit_Error[]) : Unit is Adj + Ctl {
         body (...) {
             Fact(value >= 0L, "`value` must be non-negative.");
@@ -1109,6 +1255,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
 
 
     //From Microsoft.Quantum.Canon
+    //https://github.com/microsoft/qsharp/blob/d1fb2a164a3ec4db73506beda3a70e097ddaacc9/library/std/src/canon.qs#L528
     operation SwapReverseRegister_Error(register : Qubit_Error[]) : Unit is Adj + Ctl {
         let length = Length(register);
         for i in 0..length / 2 - 1 {
@@ -1117,27 +1264,29 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
     }
 
     //From Microsoft.Quantum.Canon
+    //https://github.com/microsoft/qsharp/blob/d1fb2a164a3ec4db73506beda3a70e097ddaacc9/library/std/src/canon.qs#L511
     operation ApplyQFT_Error(qs : Qubit_Error[]) : Unit is Adj + Ctl {
-        Message("starting qft");
+        // Message("starting qft");
 
         let length = Length(qs);
         Fact(length >= 1, "ApplyQFT: Length(qs) must be at least 1.");
         for i in length - 1..-1..0 {
-            Message($"H({i})");
+            // Message($"H({i})");
             H_Gate_Error(qs[i]);
             for j in 0..i - 1 {
-                Message("");
-                Message($"Rotation by {j+1}");
-                Message($"Control: x{i}");
-                Message($"Target x{i-j-1}");
+                // Message("");
+                // Message($"Rotation by {j+1}");
+                // Message($"Control: x{i}");
+                // Message($"Target x{i-j-1}");
                 
                 Controlled R1Frac_Gate_Error([convertQubitErrorToQubit(qs[i])], (1, j + 1, qs[i - j - 1]));
             }
-            Message("");
+            // Message("");
         }
     }
 
     //from Microsoft.Quantum.Measurement
+    //https://github.com/microsoft/qsharp/blob/d1fb2a164a3ec4db73506beda3a70e097ddaacc9/library/std/src/measurement.qs#L59
     operation MeasureEachZ_Error(register : Qubit_Error[]) : Result[] {
         mutable results = [];
 
@@ -1148,6 +1297,7 @@ namespace Microsoft.Quantum.Crypto.Error.Basics {
     }
 
     //from Microsoft.Quantum.Measurement
+    //https://github.com/microsoft/qsharp/blob/d1fb2a164a3ec4db73506beda3a70e097ddaacc9/library/std/src/measurement.qs#L152
     operation MResetZ_Error(target : Qubit_Error) : Result {
         let (q, p) = target!;
         _causeError(q, p);
